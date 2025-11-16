@@ -1,16 +1,85 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth"; 
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Settings, Users, Columns, Zap, AlertTriangle, Save, Hash, FileText, ExternalLink, ChevronLeft } from 'lucide-react';
 import { getServerSession } from "next-auth/next";
+import {
+  Settings, Save, Hash, FileText, ChevronLeft, Users as UsersIcon,
+} from "lucide-react";
 
+/** ===== Status config (slug lưu DB, label hiển thị) ===== */
+export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'done';
 
-export default async function ProjectSettingsPage({ params }: { params: { projectId: string } }) {
+export const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
+  { value: 'planning',    label: 'Đang lên kế hoạch' },
+  { value: 'in_progress', label: 'Đang triển khai' },
+  { value: 'review',      label: 'Đang đánh giá / nghiệm thu' },
+  { value: 'done',        label: 'Hoàn thành' },
+];
+
+export const DEFAULT_PROJECT_STATUS: ProjectStatus = 'planning';
+
+/** ===== Zod schema ===== */
+const UpdateSchema = z.object({
+  name: z.string().min(1, "Tên dự án không được để trống"),
+  description: z.string().optional().nullable(),
+  status: z.enum(['planning', 'in_progress', 'review', 'done']),
+  leadId: z.string().cuid().nullable().optional(),
+});
+
+/** ===== Server Action độc lập ===== */
+export async function updateProjectAction(projectId: string, formData: FormData) {
+  "use server";
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login");
+
+  const parsed = UpdateSchema.safeParse({
+    name: String(formData.get("name") ?? ""),
+    description: (formData.get("description") as string) ?? null,
+    status: (formData.get("status") as ProjectStatus) ?? DEFAULT_PROJECT_STATUS,
+    leadId: (() => {
+      const v = formData.get("leadId");
+      if (!v || v === "none") return null;
+      return String(v);
+    })(),
+  });
+
+  if (!parsed.success) {
+    console.error("updateProject invalid:", parsed.error.flatten().fieldErrors);
+    redirect(`/projects/${projectId}/settings?error=invalid`);
+  }
+
+  const { name, description, status, leadId } = parsed.data;
+
+  // Nếu có leadId, đảm bảo người đó là thành viên dự án
+  if (leadId) {
+    const exists = await prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: leadId } },
+      select: { userId: true },
+    });
+    if (!exists) redirect(`/projects/${projectId}/settings?error=lead_not_member`);
+  }
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { name, description: description ?? null, status, leadId },
+  });
+
+  revalidatePath(`/projects/${projectId}`, "page");
+  revalidatePath(`/projects/${projectId}/settings`, "page");
+  redirect(`/projects/${projectId}/settings?saved=1`);
+}
+
+/** ===== Page ===== */
+export default async function ProjectSettingsPage({
+  params,
+}: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
   const project = await prisma.project.findUnique({
-    where: { id: params.projectId },
+    where: { id: projectId },
     include: {
       _count: { select: { members: true } },
       members: { include: { user: true } },
@@ -21,65 +90,75 @@ export default async function ProjectSettingsPage({ params }: { params: { projec
   if (!project) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
-          <div className="text-center">
-            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-xl font-semibold text-gray-900 mb-2">Không tìm thấy dự án</h1>
-            <p className="text-gray-500">Dự án bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
-          </div>
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto text-center">
+          <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Không tìm thấy dự án</h1>
+          <p className="text-gray-500">Dự án bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <ChevronLeft className="w-4 h-4" /> Về Dashboard
+          </Link>
         </div>
       </div>
     );
   }
 
-  const UpdateSchema = z.object({
-    name : z.string().min(1, "Tên dự án không được để trống"),
-    description : z.string().optional().nullable()
-});
+  // Chuẩn hóa defaultValue cho select status (fallback về planning nếu DB có giá trị lạ)
+  const ALLOWED: ProjectStatus[] = ['planning','in_progress','review','done'];
+  const safeStatus: ProjectStatus = ALLOWED.includes(project.status as ProjectStatus)
+    ? (project.status as ProjectStatus)
+    : DEFAULT_PROJECT_STATUS;
 
+  // ====== Server Action bind cho form ======
   function makeUpdateProjectAction(projectId: string) {
-  return async function updateProject(formData: FormData) {
-    "use server";
+    return async function updateProject(formData: FormData) {
+      "use server";
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) redirect("/login");
 
-    // 1) Auth
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) redirect("/login");
+      const parsed = UpdateSchema.safeParse({
+        name: String(formData.get("name") ?? ""),
+        description: (formData.get("description") as string) ?? null,
+        status: (formData.get("status") as ProjectStatus) ?? DEFAULT_PROJECT_STATUS,
+        leadId: (() => {
+          const v = formData.get("leadId");
+          if (!v || v === "none") return null;
+          return String(v);
+        })(),
+      });
 
-    // 2) Lấy dữ liệu thô và ép kiểu chuỗi
-    const nameVal = formData.get("name");
-    const descVal = formData.get("description");
+      if (!parsed.success) {
+        console.error("updateProject invalid:", parsed.error.flatten().fieldErrors);
+        redirect(`/projects/${projectId}/settings?error=invalid`);
+      }
 
-    const parsed = UpdateSchema.safeParse({
-      name: typeof nameVal === "string" ? nameVal : "",
-      description: typeof descVal === "string" ? descVal : null,
-    });
+      const { name, description, status, leadId } = parsed.data;
 
-    if (!parsed.success) {
-      // Đừng console.error(null); nếu muốn log:
-      console.error("updateProject invalid:", parsed.error.flatten().fieldErrors);
-      redirect(`/projects/${projectId}/settings?error=invalid`);
-    }
+      // (An toàn) Nếu set leadId thì đảm bảo người đó là thành viên dự án
+      if (leadId) {
+        const exists = await prisma.projectMember.findUnique({
+          where: { projectId_userId: { projectId, userId: leadId } },
+          select: { userId: true },
+        });
+        if (!exists) redirect(`/projects/${projectId}/settings?error=lead_not_member`);
+      }
 
-    // 3) (tuỳ) kiểm tra quyền ở đây
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { name, description: description ?? null, status, leadId },
+      });
 
-    // 4) Update
-    await prisma.project.update({
-      where: { id: projectId },
-      data: {
-        name: parsed.data.name,
-        description: parsed.data.description ?? null,
-      },
-    });
+      revalidatePath(`/projects/${projectId}`, "page");          // trang chi tiết
+      revalidatePath(`/projects/${projectId}/settings`, "page"); // chính trang settings
+      redirect(`/projects/${projectId}/settings?saved=1`);
+    };
+  }
 
-    // 5) Cache & điều hướng
-    revalidatePath(`/projects/${projectId}/settings`, "page");
-    redirect(`/projects/${projectId}/settings?saved=1`);
-  };
-}
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-6xl mx-auto p-6 space-y-8">
-        
+      <div className="max-w-4xl mx-auto p-6 space-y-8">
         {/* Header */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
@@ -103,208 +182,99 @@ export default async function ProjectSettingsPage({ params }: { params: { projec
           </div>
         </div>
 
-        {/* Tabs Navigation */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <div className="flex gap-1">
-              {/* Active Tab - Tổng quan */}
-              <Link 
-                href="#" 
-                className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-md"
-              >
+        {/* Form */}
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="px-8 py-6 border-b border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900">Thông tin dự án</h2>
+            <p className="text-gray-500 mt-1">Chỉnh sửa và lưu lại các thông tin cơ bản.</p>
+          </div>
+
+          <form action={makeUpdateProjectAction(project.id)} className="p-8 space-y-6">
+            <input type="hidden" name="_method" value="PATCH" />
+
+            {/* Tên dự án */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Hash className="w-4 h-4" />
+                Tên dự án
+              </label>
+              <input
+                name="name"
+                defaultValue={project.name}
+                className="text-gray-900 w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors duration-200 bg-gray-50 focus:bg-white"
+                placeholder="Nhập tên dự án..."
+              />
+            </div>
+
+            {/* Mô tả */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <FileText className="w-4 h-4" />
-                Tổng quan
-              </Link>
-              
-              {/* Other Tabs */}
-              <Link 
-                href="./members" 
-                className="flex items-center gap-2 px-4 py-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-all duration-200"
-              >
-                <Users className="w-4 h-4" />
-                Thành viên
-                <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full ml-1">
-                  {project._count.members}
-                </span>
-              </Link>
-              
-              <Link 
-                href="./columns" 
-                className="flex items-center gap-2 px-4 py-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-all duration-200"
-              >
-                <Columns className="w-4 h-4" />
-                Cột Kanban
-                <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full ml-1">
-                  {project.columns.length}
-                </span>
-              </Link>
-              
-              <Link 
-                href="./integrations" 
-                className="flex items-center gap-2 px-4 py-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-all duration-200"
-              >
-                <Zap className="w-4 h-4" />
-                Tích hợp
-              </Link>
-              
-              <Link 
-                href="./danger" 
-                className="flex items-center gap-2 px-4 py-3 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg font-medium transition-all duration-200"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Nguy hiểm
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Form */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-              <div className="px-8 py-6 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-900">Thông tin cơ bản</h2>
-                <p className="text-gray-500 mt-1">Cập nhật thông tin dự án của bạn</p>
-              </div>
-              
-              <form 
-                action={makeUpdateProjectAction(project.id)}
-                className="p-8 space-y-6"
-              >
-                <input type="hidden" name="_method" value="PATCH" />
-                
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <Hash className="w-4 h-4" />
-                    Tên dự án
-                  </label>
-                  <input 
-                    name="name" 
-                    defaultValue={project.name}
-                    className="text-gray-900 w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="Nhập tên dự án..."
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FileText className="w-4 h-4" />
-                    Mô tả dự án
-                  </label>
-                  <textarea 
-                    name="description" 
-                    defaultValue={project.description ?? ""}
-                    className="text-gray-900 w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors duration-200 bg-gray-50 focus:bg-white resize-none"
-                    rows={5}
-                    placeholder="Mô tả chi tiết về dự án của bạn..."
-                  />
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button 
-                    type="submit"
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                  >
-                    <Save className="w-4 h-4" />
-                    Lưu thay đổi
-                  </button>
-                  
-                  <button 
-                    type="button"
-                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors duration-200"
-                  >
-                    Hủy bỏ
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            
-            {/* Project Stats */}
-            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Thống kê dự án</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Users className="w-4 h-4" />
-                    <span>Thành viên</span>
-                  </div>
-                  <span className="font-semibold text-blue-600">{project._count.members}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Columns className="w-4 h-4" />
-                    <span>Cột Kanban</span>
-                  </div>
-                  <span className="font-semibold text-green-600">{project.columns.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Hash className="w-4 h-4" />
-                    <span>Mã dự án</span>
-                  </div>
-                  <span className="font-mono font-semibold text-gray-800">{project.key}</span>
-                </div>
-              </div>
+                Mô tả dự án
+              </label>
+              <textarea
+                name="description"
+                defaultValue={project.description ?? ""}
+                className="text-gray-900 w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none transition-colors duration-200 bg-gray-50 focus:bg-white resize-none"
+                rows={5}
+                placeholder="Mô tả chi tiết về dự án của bạn..."
+              />
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Thao tác nhanh</h3>
-              <div className="space-y-3">
-                <Link 
-                  href="./members"
-                  className="flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors duration-200 group"
-                >
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-700">Quản lý thành viên</span>
-                  <ExternalLink className="w-4 h-4 text-blue-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Link>
-                
-                <Link 
-                  href="./columns"
-                  className="flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 rounded-xl transition-colors duration-200 group"
-                >
-                  <Columns className="w-5 h-5 text-green-600" />
-                  <span className="font-medium text-green-700">Cấu hình Kanban</span>
-                  <ExternalLink className="w-4 h-4 text-green-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Link>
-                
-                <Link 
-                  href="./integrations"
-                  className="flex items-center gap-3 p-3 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors duration-200 group"
-                >
-                  <Zap className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium text-purple-700">Tích hợp bên thứ 3</span>
-                  <ExternalLink className="w-4 h-4 text-purple-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Link>
-              </div>
+            {/* Trạng thái */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">Trạng thái</label>
+              <select
+                name="status"
+                defaultValue={safeStatus}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:bg-white focus:border-blue-500"
+              >
+                {PROJECT_STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Danger Zone */}
-            <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl shadow-xl border-2 border-red-200 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <h3 className="font-semibold text-red-800">Vùng nguy hiểm</h3>
-              </div>
-              <p className="text-red-700 text-sm mb-4 leading-relaxed">
-                Các hành động này có thể ảnh hưởng nghiêm trọng đến dự án của bạn. Hãy thực hiện cẩn thận.
+            {/* Trưởng dự án (lead) */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <UsersIcon className="w-4 h-4" />
+                Trưởng dự án (Lead)
+              </label>
+              <select
+                name="leadId"
+                defaultValue={project.leadId ?? "none"}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:bg-white focus:border-blue-500"
+              >
+                <option value="none">— Không chỉ định —</option>
+                {project.members.map((m) => (
+                  <option key={m.user.id} value={m.user.id}>
+                    {m.user.name || m.user.email}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">
+                Chỉ có thể chọn người đã là thành viên của dự án.
               </p>
-              <Link 
-                href="./danger"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
-                <AlertTriangle className="w-4 h-4" />
-                Xóa / Lưu trữ / Khôi phục
-                <ExternalLink className="w-4 h-4" />
+                <Save className="w-4 h-4" />
+                Lưu thay đổi
+              </button>
+
+              <Link
+                href={`/projects/${project.id}`}
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors duration-200"
+              >
+                Hủy
               </Link>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

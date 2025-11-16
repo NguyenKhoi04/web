@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/authz';
-import { isSysAdmin, getProjectRole, atLeast } from '@/lib/rbac';
+import { isSysAdmin } from '@/lib/rbac';
 import { z } from 'zod';
 
 const CreateProject = z.object({
@@ -11,98 +11,73 @@ const CreateProject = z.object({
   description: z.string().optional(),
 });
 
-const Update = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().optional(),
-  status: z.enum(["ACTIVE","ARCHIVED"]).optional(),
-});
-
-export async function PATCH(req: Request, { params }: { params: { projectId: string } }) {
-  try {
-    const user = await requireUser();
-    if (!isSysAdmin((user as any).globalRole)) {
-      const role = await getProjectRole(user.id, params.projectId);
-      if (!atLeast(role, "MANAGER")) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-    }
-    const body = await req.json().catch(async () => {
-      // hỗ trợ form POST _method=PATCH
-      const form = await req.formData();
-      return Object.fromEntries(form.entries());
-    });
-    const data = Update.parse(body);
-    const updated = await prisma.project.update({ where: { id: params.projectId }, data });
-    return NextResponse.json(updated);
-  } catch (e:any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
-  }
-}
-
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { projectId: string } }
-) {
-  try {
-    const user = await requireUser();
-    const projectId = params.projectId;
-
-    // Quyền: SysAdmin hoặc >= MANAGER của dự án
-    if (!isSysAdmin((user as any).globalRole)) {
-      const role = await getProjectRole(user.id, projectId);
-      if (!atLeast(role, "MANAGER")) {
-        return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-      }
-    }
-
-    await prisma.project.delete({ where: { id: projectId } });
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
-}
-
-// GET /api/projects?withStats=1
+// GET /api/projects?withStats=1&scope=owned|joined
 export async function GET(req: Request) {
   try {
-    const user = await requireUser();
+    const me = await requireUser();
     const url = new URL(req.url);
     const withStats = url.searchParams.get('withStats') === '1';
+    const scope = (url.searchParams.get('scope') || 'owned') as 'owned' | 'joined';
 
-    const where = isSysAdmin((user as any).globalRole)
-      ? {}
-      : { members: { some: { userId: user.id } } };
+    let where: any = {};
 
-    const list = await prisma.project.findMany({
+    // Admin có thể thấy tất cả nếu muốn mở rộng thêm scope=all; ở đây giữ đúng yêu cầu owned/joined
+    if (scope === 'owned') {
+      where = { createdById: me.id };
+    } else if (scope === 'joined') {
+      // dự án đã tham gia nhưng KHÔNG phải tôi là chủ
+      where = {
+        members: { some: { userId: me.id } },
+        NOT: { createdById: me.id },
+      };
+    }
+
+    const projects = await prisma.project.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { members: true } } },
     });
 
     if (!withStats) {
-      return NextResponse.json({ items: list });
+      return NextResponse.json({ items: projects });
     }
 
-    // tính nhanh tiến độ
-    const items = await Promise.all(
-      list.map(async (p) => {
-        const [totalTasks, doneTasks] = await Promise.all([
-          prisma.task.count({ where: { projectId: p.id } }),
-          prisma.task.count({ where: { projectId: p.id, status: 'DONE' } }),
-        ]);
-        const progress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+    // Tính tiến độ theo task (làm gộp một lần để tránh N+1)
+    const ids = projects.map(p => p.id);
+    if (ids.length === 0) return NextResponse.json({ items: [] });
 
-        return {
-          id: p.id,
-          key: p.key,
-          name: p.name,
-          description: p.description,
-          createdAt: p.createdAt.toISOString(),
-          membersCount: p._count.members,
-          totalTasks,
-          doneTasks,
-          progress,
-        };
-      })
-    );
+    const totals = await prisma.task.groupBy({
+      by: ['projectId'],
+      where: { projectId: { in: ids } },
+      _count: { _all: true },
+    });
+
+    const dones = await prisma.task.groupBy({
+      by: ['projectId'],
+      where: { projectId: { in: ids }, status: 'DONE' },
+      _count: { _all: true },
+    });
+
+    const totalMap = new Map(totals.map(t => [t.projectId, t._count._all]));
+    const doneMap = new Map(dones.map(d => [d.projectId, d._count._all]));
+
+    const items = projects.map(p => {
+      const total = totalMap.get(p.id) ?? 0;
+      const done = doneMap.get(p.id) ?? 0;
+      const progress = total ? Math.round((done / total) * 100) : 0;
+      return {
+        id: p.id,
+        key: p.key,
+        name: p.name,
+        description: p.description,
+        createdAt: p.createdAt.toISOString(),
+        membersCount: p._count.members,
+        totalTasks: total,
+        doneTasks: done,
+        progress,
+        status: p.status, // nếu FE đang cần
+      };
+    });
 
     return NextResponse.json({ items });
   } catch (e: any) {
@@ -118,7 +93,6 @@ async function ensurePersonalOrg(userId: string) {
   const org = await prisma.organization.create({
     data: {
       name: 'Personal',
-      // tránh trùng slug:
       slug: `u-${userId.slice(0, 8)}-${Math.random().toString(36).slice(2, 6)}`,
       members: { create: { userId, role: 'OWNER' } },
     },
@@ -126,6 +100,7 @@ async function ensurePersonalOrg(userId: string) {
   return org.id;
 }
 
+// POST /api/projects
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
@@ -162,7 +137,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json(project, { status: 201 });
   } catch (e: any) {
-    // bắt lỗi trùng KEY (unique constraint)
     if (e?.code === 'P2002') {
       return NextResponse.json({ error: 'KEY đã tồn tại' }, { status: 409 });
     }

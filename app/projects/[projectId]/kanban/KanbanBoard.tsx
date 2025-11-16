@@ -18,8 +18,10 @@ type Task = {
   columnId: string | null;
   order: number | null;
   priority?: Priority | null;
-  assignee?: string | null; // nếu API có trả name người nhận
+  assignee?: string | null; // nếu API trả tên 1 người
+  assignees?: { user: { id: string; name: string | null; email: string } }[]; // nếu API trả nhiều
 };
+
 
 export default function KanbanBoard({ projectId }: { projectId: string }) {
   const [columns, setColumns] = useState<Column[]>([]);
@@ -27,6 +29,20 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState<boolean>(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+   
+  function getAssigneeLabel(t: Task): string {
+  // ưu tiên mảng assignees nếu có
+  if (t.assignees && t.assignees.length > 0) {
+    return t.assignees
+      .map(a => a.user.name || a.user.email)
+      .filter(Boolean)
+      .join(', ');
+  }
+  // fallback: assignee (string đơn)
+  if (t.assignee && t.assignee.trim()) return t.assignee;
+  // không có gì → chưa phân công
+  return 'Chưa phân công';
+}
 
   async function fetchBoardData() {
     setLoading(true);
@@ -220,10 +236,10 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
                     )}
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-gray-500">
-                        👤 {task.assignee || "Chưa phân công"}
+                      👤 {getAssigneeLabel(task)}
+                         </div>
+                       {getPriorityBadge(task.priority)}
                       </div>
-                      {getPriorityBadge(task.priority)}
-                    </div>
                   </div>
                 ))}
 

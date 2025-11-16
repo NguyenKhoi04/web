@@ -1,6 +1,9 @@
 // Server Component (Next 15: params là Promise => phải await)
 import Link from "next/link";
 import ActiveLink from "./activeLink";
+import Dashboard from "@/app/dashboard/page";
+import ActivityButton from "./ActivityButton"; // UI đã làm
+
 
 export default async function ProjectLayout({
   children,
@@ -25,7 +28,7 @@ export default async function ProjectLayout({
           </Link>
           <span className="text-gray-300 text-lg font-light">/</span>
           <Link
-            href={base}
+            href="../dashboard"
             className="text-gray-700 hover:text-gray-900 font-semibold text-lg hover:scale-105 transition-all duration-200"
           >
             Project
@@ -60,6 +63,32 @@ export default async function ProjectLayout({
           >
             Cài đặt
           </ActiveLink>
+          <ActiveLink
+            href={`${base}/comments`}
+            
+          >
+            Bình luận
+          </ActiveLink>
+          <ActiveLink
+            href={`${base}/sprints`}
+            
+          >
+            Sprints
+          </ActiveLink>
+
+          <ActiveLink
+            href={`${base}/milestones`}
+            
+          >
+            Milestones
+          </ActiveLink>
+
+          <ActiveLink
+            href={`${base}/progress`}
+          >
+            Tiến độ
+          </ActiveLink>
+          <ActivityButton projectId={projectId} />
         </div>
       </div>
 

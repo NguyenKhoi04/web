@@ -42,6 +42,14 @@ const RegisterPage = () => {
     }
   };
 
+  const isEmailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
+  const canSubmit =
+  !isLoading &&
+  isEmailValid(formData.email) &&
+  formData.password.length >= 8 &&
+  formData.password === formData.confirmPassword &&
+  formData.agreeTerms === true;
+
   const calculatePasswordStrength = (password: string): number => {
     let strength = 0;
     if (password.length >= 8) strength += 25;
@@ -67,41 +75,33 @@ const RegisterPage = () => {
   };
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
-    
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'Vui lòng nhập tên';
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Vui lòng nhập họ';
-    }
-    
-    if (!formData.email) {
-      newErrors.email = 'Vui lòng nhập email';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Vui lòng nhập mật khẩu';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
-    }
-    
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Mật khẩu không khớp';
-    }
-    
-    if (!formData.agreeTerms) {
-      newErrors.agreeTerms = 'Vui lòng đồng ý với điều khoản sử dụng';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const newErrors: {[key: string]: string} = {};
+
+  if (!formData.email) {
+    newErrors.email = 'Vui lòng nhập email';
+  } else if (!isEmailValid(formData.email)) {
+    newErrors.email = 'Email không hợp lệ';
+  }
+
+  if (!formData.password) {
+    newErrors.password = 'Vui lòng nhập mật khẩu';
+  } else if (formData.password.length < 8) {
+    newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
+  }
+
+  if (!formData.confirmPassword) {
+    newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu';
+  } else if (formData.password !== formData.confirmPassword) {
+    newErrors.confirmPassword = 'Mật khẩu không khớp';
+  }
+
+  if (!formData.agreeTerms) {
+    newErrors.agreeTerms = 'Vui lòng đồng ý với điều khoản sử dụng';
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
@@ -234,6 +234,7 @@ if (!res.ok) {
                   <input
                     type="text"
                     name="firstName"
+                    required
                     value={formData.firstName}
                     onChange={handleInputChange}
                     className={`w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-md border ${
@@ -256,6 +257,7 @@ if (!res.ok) {
                   <input
                     type="text"
                     name="lastName"
+                    required
                     value={formData.lastName}
                     onChange={handleInputChange}
                     className={`w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-md border ${
@@ -280,6 +282,7 @@ if (!res.ok) {
                 <input
                   type="email"
                   name="email"
+                  required
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-md border ${
@@ -321,6 +324,7 @@ if (!res.ok) {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
+                  required
                   value={formData.password}
                   onChange={handleInputChange}
                   className={`w-full pl-12 pr-12 py-3 bg-white/20 backdrop-blur-md border ${
@@ -374,6 +378,7 @@ if (!res.ok) {
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
+                  required
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   className={`w-full pl-12 pr-12 py-3 bg-white/20 backdrop-blur-md border ${
@@ -407,6 +412,7 @@ if (!res.ok) {
                 <input
                   type="checkbox"
                   name="agreeTerms"
+                  required
                   checked={formData.agreeTerms}
                   onChange={handleInputChange}
                   className={`mt-1 w-4 h-4 text-green-500 bg-white/20 border-white/30 rounded focus:ring-green-500 focus:ring-2 ${

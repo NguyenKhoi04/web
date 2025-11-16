@@ -1,6 +1,0 @@
--- AlterTable
-ALTER TABLE `User` ADD COLUMN `bio` VARCHAR(191) NULL,
-    ADD COLUMN `links` JSON NULL,
-    ADD COLUMN `phone` VARCHAR(191) NULL,
-    ADD COLUMN `timezone` VARCHAR(191) NULL DEFAULT 'Asia/Ho_Chi_Minh',
-    ADD COLUMN `title` VARCHAR(191) NULL;

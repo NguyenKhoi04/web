@@ -1,21 +1,41 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireProjectRole } from '@/lib/authz';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireProjectRole } from "@/lib/authz";
 
-export async function GET(_: Request, { params }: { params: { projectId: string } }) {
-  // bất kỳ MEMBER trở lên đều xem được danh sách
-  await requireProjectRole(params.projectId, 'MEMBER');
+export async function GET(
+  req: Request,
+  ctx: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const { projectId } = await ctx.params;
+    await requireProjectRole(projectId, "VIEWER");
 
-  const items = await prisma.projectMember.findMany({
-    where: { projectId: params.projectId },
-    select: {
-      role: true,
-      user: { select: { id: true, name: true, email: true, image: true } },
-    },
-    orderBy: [{ role: 'asc' }],
-  });
+    const url = new URL(req.url);
+    const q = (url.searchParams.get("q") || "").trim().toLowerCase();
 
-  return NextResponse.json({
-    items: items.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email, role: m.role })),
-  });
+    const rows = await prisma.projectMember.findMany({
+      where: { projectId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { joinedAt: "desc" },
+    });
+
+    const items = rows
+      .map(r => ({
+        id: r.user.id,
+        name: r.user.name,
+        email: r.user.email!,
+        role: r.role,
+      }))
+      .filter(m => {
+        if (!q) return true;
+        return (
+          (m.name ?? "").toLowerCase().includes(q) ||
+          m.email.toLowerCase().includes(q)
+        );
+      });
+
+    return NextResponse.json({ items });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: e?.status ?? 500 });
+  }
 }

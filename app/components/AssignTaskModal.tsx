@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 
 type Member = { id: string; name: string | null; email: string; role: string };
+type Mode = 'follower' | 'assignees' | 'both';
 
 export default function AssignTaskModal({
   open,
@@ -9,7 +10,9 @@ export default function AssignTaskModal({
   onAssigned,
   taskId,
   projectId,
+  mode = 'both',                // NEW
   defaultAssignees = [],
+  defaultFollowerId = null,
   defaultStart,
   defaultDue,
   defaultEstimate,
@@ -19,13 +22,16 @@ export default function AssignTaskModal({
   onAssigned?: () => void;
   taskId: string;
   projectId: string;
+  mode?: Mode;                  // NEW
   defaultAssignees?: string[];
+  defaultFollowerId?: string | null;
   defaultStart?: string | null;
   defaultDue?: string | null;
   defaultEstimate?: number | null;
 }) {
   const [members, setMembers] = useState<Member[]>([]);
-  const [picked, setPicked] = useState<string[]>(defaultAssignees);
+  const [pickedAssignees, setPickedAssignees] = useState<string[]>(defaultAssignees);
+  const [followerId, setFollowerId] = useState<string | null>(defaultFollowerId);
   const [startDate, setStartDate] = useState<string>(defaultStart ?? '');
   const [dueDate, setDueDate] = useState<string>(defaultDue ?? '');
   const [estimate, setEstimate] = useState<string>(defaultEstimate ? String(defaultEstimate) : '');
@@ -44,10 +50,10 @@ export default function AssignTaskModal({
       .finally(() => setLoading(false));
   }, [open, projectId]);
 
-  // reset khi mở
   useEffect(() => {
     if (open) {
-      setPicked(defaultAssignees);
+      setPickedAssignees(defaultAssignees);
+      setFollowerId(defaultFollowerId ?? null);
       setStartDate(defaultStart ?? '');
       setDueDate(defaultDue ?? '');
       setEstimate(defaultEstimate ? String(defaultEstimate) : '');
@@ -55,21 +61,25 @@ export default function AssignTaskModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, taskId]);
 
-  const toggle = (uid: string) => {
-    setPicked(prev => prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]);
+  const toggleAssignee = (uid: string) => {
+    setPickedAssignees(prev => prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]);
   };
 
   async function submit() {
     try {
       setSubmitting(true);
       setErr(null);
+
+      // Chỉ gửi đúng phần theo "mode"
       const body: any = {
-        assigneeIds: picked,
         startDate: startDate || null,
         dueDate: dueDate || null,
         estimateHours: estimate === '' ? null : Number(estimate),
       };
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      if (mode === 'assignees' || mode === 'both') body.assigneeIds = pickedAssignees;
+      if (mode === 'follower'  || mode === 'both') body.followerId  = followerId;
+
+      const res = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -81,7 +91,7 @@ export default function AssignTaskModal({
       onAssigned?.();
       onClose();
     } catch (e: any) {
-      setErr(e.message || 'Giao việc thất bại');
+      setErr(e.message || 'Lưu thất bại');
     } finally {
       setSubmitting(false);
     }
@@ -93,37 +103,70 @@ export default function AssignTaskModal({
     <div className="text-gray-900 fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl">
         <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Giao việc cho thành viên</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {mode === 'follower' ? 'Giao người theo dõi'
+             : mode === 'assignees' ? 'Giao người đảm nhận'
+             : 'Giao việc cho thành viên'}
+          </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
 
-        <div className="p-5 space-y-5">
-          {/* chọn người */}
-          <div>
-            <div className="mb-2 text-sm font-medium text-gray-700">Thành viên (chọn nhiều)</div>
-            {loading ? (
-              <div className="text-gray-500">Đang tải...</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-auto">
-                {members.map(m => (
-                  <label key={m.id} className="flex items-center gap-3 p-2 border rounded-lg hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={picked.includes(m.id)}
-                      onChange={() => toggle(m.id)}
-                    />
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-900">{m.name || m.email}</div>
-                      <div className="text-xs text-gray-500">{m.email} • {m.role}</div>
-                    </div>
-                  </label>
-                ))}
-                {members.length === 0 && <div className="text-gray-500">Chưa có thành viên</div>}
-              </div>
-            )}
-          </div>
+        <div className="p-5 space-y-6">
+          {(mode === 'follower' || mode === 'both') && (
+            <div>
+              <div className="mb-2 text-sm font-medium text-gray-700">Người theo dõi (1 người)</div>
+              {loading ? (
+                <div className="text-gray-500">Đang tải...</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-auto">
+                  {members.map(m => (
+                    <label key={m.id} className="flex items-center gap-3 p-2 border rounded-lg hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="follower"
+                        checked={followerId === m.id}
+                        onChange={() => setFollowerId(m.id)}
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-900">{m.name || m.email}</div>
+                        <div className="text-xs text-gray-500">{m.email} • {m.role}</div>
+                      </div>
+                      {followerId === m.id && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">Theo dõi</span>}
+                    </label>
+                  ))}
+                  {members.length === 0 && <div className="text-gray-500">Chưa có thành viên</div>}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* kế hoạch */}
+          {(mode === 'assignees' || mode === 'both') && (
+            <div>
+              <div className="mb-2 text-sm font-medium text-gray-700">Đảm nhận (chọn nhiều)</div>
+              {loading ? (
+                <div className="text-gray-500">Đang tải...</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-auto">
+                  {members.map(m => (
+                    <label key={m.id} className="flex items-center gap-3 p-2 border rounded-lg hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={pickedAssignees.includes(m.id)}
+                        onChange={() => toggleAssignee(m.id)}
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-900">{m.name || m.email}</div>
+                        <div className="text-xs text-gray-500">{m.email} • {m.role}</div>
+                      </div>
+                    </label>
+                  ))}
+                  {members.length === 0 && <div className="text-gray-500">Chưa có thành viên</div>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Kế hoạch (giữ chung) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <div className="mb-1 text-sm font-medium text-gray-700">Bắt đầu</div>
@@ -147,12 +190,8 @@ export default function AssignTaskModal({
 
         <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 rounded-lg border">Hủy</button>
-          <button
-            onClick={submit}
-            disabled={submitting}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60"
-          >
-            {submitting ? 'Đang lưu…' : 'Giao việc'}
+          <button onClick={submit} disabled={submitting} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">
+            {submitting ? 'Đang lưu…' : 'Lưu'}
           </button>
         </div>
       </div>

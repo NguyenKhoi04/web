@@ -5,25 +5,43 @@ import { requireProjectRole } from "@/lib/authz";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 
+// Next 15: params phải await
+type Ctx = { params: Promise<{ projectId: string }> };
+
 const Body = z.object({
-  userId: z.string().min(1),
+  userId: z.string().cuid(),                               // ✅ cuid
   role: z.enum(["VIEWER","MEMBER","LEAD","MANAGER"]).default("MEMBER"),
 });
 
-export async function POST(req: Request, { params }: { params: { projectId: string } }) {
-  const me = await requireProjectRole(params.projectId, "MANAGER");
+export async function POST(req: Request, ctx: Ctx) {
+  const { projectId } = await ctx.params;                  // ✅ await
+  const me = await requireProjectRole(projectId, "MANAGER");
   const { userId, role } = Body.parse(await req.json());
 
-  // đã là member?
+  // Đã là member?
   const already = await prisma.projectMember.findFirst({
-    where: { projectId: params.projectId, userId },
+    where: { projectId, userId },
   });
-  if (already) return NextResponse.json({ error: "Người này đã là thành viên" }, { status: 409 });
+  if (already) {
+    return NextResponse.json({ error: "Người này đã là thành viên" }, { status: 409 });
+  }
 
-  const token = randomBytes(16).toString("hex"); // dùng làm khóa ngắn
-  const expiresAt = new Date(Date.now() + 7*24*60*60*1000);
+  // Đã có invite PENDING cho user này?
+  const dup = await prisma.projectInvite.findFirst({
+    where: { projectId, recipientId: userId, status: "PENDING" },
+    select: { id: true },
+  });
+  if (dup) {
+    return NextResponse.json({ error: "Đã tồn tại lời mời đang chờ" }, { status: 409 });
+  }
 
-  const project = await prisma.project.findUnique({ where: { id: params.projectId }, select: { id: true, name: true }});
+  const token = randomBytes(16).toString("hex"); // khóa ngắn
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, name: true },
+  });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const invite = await prisma.projectInvite.create({
@@ -32,12 +50,17 @@ export async function POST(req: Request, { params }: { params: { projectId: stri
       recipientId: userId,
       role: role as any,
       token,
+      status: "PENDING",                                   // ✅ set rõ ràng
       expiresAt,
       invitedById: me.id,
     },
+    select: {
+      id: true, token: true, role: true, status: true, expiresAt: true,
+      recipientId: true, invitedById: true, projectId: true, createdAt: true,
+    },
   });
 
-  // Tạo notification cho người được mời
+  // Notification (nếu model data là JSON)
   await prisma.notification.create({
     data: {
       recipientId: userId,
@@ -49,11 +72,11 @@ export async function POST(req: Request, { params }: { params: { projectId: stri
   return NextResponse.json(invite, { status: 201 });
 }
 
-// List các lời mời đang chờ (để tab "Nhóm" xem)
-export async function GET(_req: Request, { params }: { params: { projectId: string } }) {
-  await requireProjectRole(params.projectId, "MANAGER");
+export async function GET(_req: Request, ctx: Ctx) {
+  const { projectId } = await ctx.params;                  // ✅ await
+  await requireProjectRole(projectId, "MANAGER");
   const items = await prisma.projectInvite.findMany({
-    where: { projectId: params.projectId, status: "PENDING" },
+    where: { projectId, status: "PENDING" },
     include: { recipient: true, invitedBy: true },
     orderBy: { createdAt: "desc" },
   });

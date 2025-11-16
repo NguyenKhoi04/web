@@ -143,7 +143,7 @@ setHighlight(-1);
 
           {/* Email / tìm người dùng */}
           <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">UserName</label>
             <input
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedUser(null); }}
