@@ -1,27 +1,54 @@
-// app/projects/[projectId]/milestones/page.tsx
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { notFound } from 'next/navigation';
 import MilestoneCreateButton from './MilestoneCreateButton';
+import MilestoneActions from '@/app/components/MilestoneActions';
 
-type Props = { params: { projectId: string } };
+export default async function ProjectMilestonesPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const session = await getServerSession(authOptions);
 
-export default async function ProjectMilestonesPage({ params }: Props) {
   const project = await prisma.project.findUnique({
-    where: { id: params.projectId },
+    where: { id: projectId },
     select: { id: true, name: true, key: true },
   });
   if (!project) return notFound();
 
+  // Role verification
+  let canManage = false;
+  if (session?.user?.id) {
+    const member = await prisma.projectMember.findFirst({
+      where: { projectId, userId: session.user.id }
+    });
+    if (member && (member.role === 'MANAGER' || member.role === 'LEAD')) {
+      canManage = true;
+    }
+  }
+
+  // Fetch milestones with computed progress
+  // Since we need computation (done tasks / total), we can do it in DB or in code.
+  // DB approach:
   const milestones = await prisma.milestone.findMany({
-    where: { projectId: project.id },
-    orderBy: [{ dueDate: 'asc' }],
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      dueDate: true,
-      status: true,
-    },
+    where: { projectId },
+    orderBy: { dueDate: 'asc' },
+    include: {
+      tasks: { select: { status: true } },
+      sprints: { select: { id: true, name: true } }
+    }
+  });
+
+  const items = milestones.map(m => {
+    const total = m.tasks.length;
+    const done = m.tasks.filter(t => t.status === 'DONE').length;
+    const progress = total > 0 ? Math.round(done / total * 100) : (m.progress || 0);
+
+    return {
+      ...m,
+      progress,
+      done,
+      total
+    };
   });
 
   return (
@@ -30,39 +57,73 @@ export default async function ProjectMilestonesPage({ params }: Props) {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Milestones — {project.key}</h1>
-            <p className="text-gray-600">Mốc quan trọng của dự án</p>
+            <p className="text-gray-600">Các cột mốc quan trọng của dự án</p>
           </div>
-          <MilestoneCreateButton projectId={project.id} />
+          {canManage && <MilestoneCreateButton projectId={projectId} />}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Tiêu đề</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Mô tả</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Hạn</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Trạng thái</th>
+              <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                <th className="px-6 py-3">Tên Milestone</th>
+                <th className="px-6 py-3">Deadline (Ngày diễn ra)</th>
+                <th className="px-6 py-3">Tiến độ (Auto)</th>
+                <th className="px-6 py-3">Trạng thái</th>
+                <th className="px-6 py-3">Liên kết</th>
+                <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {milestones.map(m => (
+              {items.map(m => (
                 <tr key={m.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{m.title}</td>
-                  <td className="px-6 py-4 text-gray-700">{m.description || <span className="text-gray-400 italic">—</span>}</td>
-                  <td className="px-6 py-4 text-gray-700">{m.dueDate.toISOString().slice(0,10)}</td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                    <div className="font-medium text-gray-900">{m.title}</div>
+                    {m.description && <div className="text-sm text-gray-500 truncate max-w-xs">{m.description}</div>}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">
+                    {new Date(m.dueDate).toLocaleDateString('vi-VN')}
+                    {/* If Completed, show actual finish date? Stored in updatedAt if status changed to completed? Or separate field? 
+                            User: "Ngày hoàn thành thực tế (nếu completed)". 
+                            Currently we don't store exact completion date field. 
+                            Maybe just show status for now.
+                        */}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-[100px]">
+                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${m.progress}%` }}></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{m.progress}%</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{m.done}/{m.total} tasks</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium 
+                            ${m.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        m.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'}`}>
                       {m.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {m.sprints.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {m.sprints.map(s => <span key={s.id} className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs">{s.name}</span>)}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">--</span>
+                    )}
+                    {/* Also tasks count? */}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <MilestoneActions projectId={projectId} milestone={m} canManage={canManage} />
+                  </td>
                 </tr>
               ))}
-              {milestones.length === 0 && (
+              {items.length === 0 && (
                 <tr>
-                  <td className="px-6 py-10 text-center text-gray-500" colSpan={4}>
-                    Chưa có milestone nào — bấm “Tạo milestone” để thêm.
-                  </td>
+                  <td colSpan={6} className="px-6 py-10 text-center text-gray-500">Chưa có milestone nào.</td>
                 </tr>
               )}
             </tbody>

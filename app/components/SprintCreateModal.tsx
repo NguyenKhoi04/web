@@ -1,3 +1,4 @@
+// app/components/SprintCreateModal.tsx
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
@@ -27,8 +28,16 @@ export default function SprintCreateModal({
     if (!open) return;
     setName('Sprint 1');
     setGoal('');
-    setStartDate('');
-    setEndDate('');
+
+    // Default dates: Today & Today + 13 days
+    const today = new Date();
+    const startStr = today.toISOString().slice(0, 10);
+    const endObj = new Date(today);
+    endObj.setDate(today.getDate() + 13);
+    const endStr = endObj.toISOString().slice(0, 10);
+
+    setStartDate(startStr);
+    setEndDate(endStr);
     setErr(null);
     setLoading(false);
   }, [open]);
@@ -67,6 +76,7 @@ export default function SprintCreateModal({
   }
 
   function onBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (loading) return; // Không đóng khi đang loading
     if (e.target === e.currentTarget) onClose();
   }
 
@@ -81,7 +91,12 @@ export default function SprintCreateModal({
       <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Tạo sprint</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            aria-label="Đóng"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -94,16 +109,19 @@ export default function SprintCreateModal({
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border px-3 py-2"
               placeholder="Sprint 1"
+              disabled={loading}
             />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium">Mục tiêu (tuỳ chọn)</label>
-            <input
+            <textarea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               className="w-full rounded-lg border px-3 py-2"
               placeholder="VD: Hoàn thiện trang catalog"
+              rows={3}
+              disabled={loading}
             />
           </div>
 
@@ -115,9 +133,11 @@ export default function SprintCreateModal({
                 value={startDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
+                  // Auto adjust end date logic could be advanced, but simple validation is safer
                   if (endDate && e.target.value > endDate) setEndDate(e.target.value);
                 }}
                 className="w-full rounded-lg border px-3 py-2"
+                disabled={loading}
               />
             </div>
             <div>
@@ -128,6 +148,7 @@ export default function SprintCreateModal({
                 min={startDate || undefined}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2"
+                disabled={loading}
               />
             </div>
           </div>
@@ -141,14 +162,19 @@ export default function SprintCreateModal({
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border px-4 py-2">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-lg border px-4 py-2 disabled:opacity-50"
+          >
             Hủy
           </button>
           <button
             onClick={handleCreate}
             disabled={!isValid || loading}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-white disabled:opacity-60"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-white disabled:opacity-60 flex items-center gap-2"
           >
+            {loading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
             {loading ? 'Đang tạo…' : 'Tạo sprint'}
           </button>
         </div>

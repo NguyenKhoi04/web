@@ -1,4 +1,4 @@
-// Server Component
+// app/projects/[projectId]/kanban/page.tsx
 import KanbanBoard from "./KanbanBoard";
 import CreateSprintButton from "./CreateSprintButton"; // <-- thêm impor
 
@@ -10,7 +10,7 @@ export default async function KanbanPage({
   const { projectId } = await params; // ✅ PHẢI await
 
   return (
-     <div className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Bảng Kanban Dự Án</h1>
         <CreateSprintButton projectId={projectId} /> {/* <-- nút + modal */}

@@ -1,9 +1,12 @@
-// Server Component (Next 15: params là Promise => phải await)
+// app/projects/[projectId]/layout.tsx
 import Link from "next/link";
 import ActiveLink from "./activeLink";
 import Dashboard from "@/app/dashboard/page";
 import ActivityButton from "./ActivityButton"; // UI đã làm
-
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import NotificationBell from "@/app/components/NotificationBell";
 
 export default async function ProjectLayout({
   children,
@@ -15,6 +18,24 @@ export default async function ProjectLayout({
   const { projectId } = await params; // ✅ PHẢI await
   const base = `/projects/${projectId}`;
 
+  const session = await getServerSession(authOptions);
+  let role = "MEMBER"; // mặc định
+
+  if (session?.user?.id) {
+    const member = await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: session.user.id,
+        },
+      },
+      select: { role: true },
+    });
+    if (member) {
+      role = member.role;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 text-gray-900">
       {/* Header / Breadcrumb đơn giản */}
@@ -24,14 +45,14 @@ export default async function ProjectLayout({
             href="/"
             className="font-bold text-lg text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
           >
-            ProjectHub
+            DVTManagement
           </Link>
           <span className="text-gray-300 text-lg font-light">/</span>
           <Link
-            href="../dashboard"
+            href="/dashboard"
             className="text-gray-700 hover:text-gray-900 font-semibold text-lg hover:scale-105 transition-all duration-200"
           >
-            Project
+            Dự án
           </Link>
         </div>
       </div>
@@ -41,54 +62,62 @@ export default async function ProjectLayout({
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2">
           <ActiveLink
             href={base}
-            
+
           >
             Chi tiết
           </ActiveLink>
           <ActiveLink
             href={`${base}/tasks`}
-            
+
           >
             Nhiệm vụ
           </ActiveLink>
           <ActiveLink
             href={`${base}/kanban`}
-            
+
           >
             Kanban
           </ActiveLink>
-          <ActiveLink
-            href={`${base}/settings`}
-            
-          >
-            Cài đặt
-          </ActiveLink>
+
+          {/* Nếu user là MEMBER thì ẩn Cài đặt */}
+          {role !== 'MEMBER' && (
+            <ActiveLink
+              href={`${base}/settings`}
+            >
+              Cài đặt
+            </ActiveLink>
+          )}
+
           <ActiveLink
             href={`${base}/comments`}
-            
+
           >
             Bình luận
           </ActiveLink>
           <ActiveLink
             href={`${base}/sprints`}
-            
+
           >
             Sprints
           </ActiveLink>
 
           <ActiveLink
             href={`${base}/milestones`}
-            
+
           >
             Milestones
           </ActiveLink>
 
-          <ActiveLink
-            href={`${base}/progress`}
-          >
-            Tiến độ
-          </ActiveLink>
+          {role !== 'MEMBER' && (
+            <ActiveLink
+              href={`${base}/progress`}
+            >
+              Tiến độ
+            </ActiveLink>
+          )}
+          <div className="flex-1" />
           <ActivityButton projectId={projectId} />
+          <NotificationBell />
         </div>
       </div>
 

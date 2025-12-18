@@ -1,11 +1,10 @@
 // app/projects/[projectId]/comments/page.tsx
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { MessageSquare, ChevronLeft } from "lucide-react";
+import { requireUser } from "@/lib/authz";
 import CommentsClient from "./CommentsClient";
 
 export default async function ProjectCommentsPage({
-   params,
+  params,
 }: {
   params: Promise<{ projectId: string }>; // Next.js 15 style
 }) {
@@ -13,7 +12,17 @@ export default async function ProjectCommentsPage({
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, name: true, key: true },
+    select: {
+      id: true,
+      name: true,
+      key: true,
+      members: {
+        select: {
+          userId: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      },
+    },
   });
   if (!project) {
     return (
@@ -23,29 +32,36 @@ export default async function ProjectCommentsPage({
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow border p-5">
-          <div className="flex items-center gap-3">
-            <Link href={`/projects/${project.id}`} className="ml-auto order-last">
-              <ChevronLeft className="w-6 h-6 text-gray-500" />
-            </Link>
-            <MessageSquare className="w-7 h-7 text-blue-600" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Bình luận dự án</h1>
-              <div className="text-gray-600 text-sm">
-                <span className="font-medium">{project.name}</span>
-                {project.key ? <> • <span className="font-mono">{project.key}</span></> : null}
-              </div>
-            </div>
-          </div>
-        </div>
+  // Fetch tasks for dropdown
+  const me = await requireUser();
+  const membership = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId, userId: me.id } },
+    select: { role: true },
+  });
 
-        {/* Comments */}
-        <CommentsClient projectId={project.id} />
-      </div>
-    </div>
+  const isLead = membership?.role === 'OWNER' || membership?.role === 'LEAD' || membership?.role === 'MANAGER';
+
+  const tasks = await prisma.task.findMany({
+    where: {
+      projectId,
+      ...(isLead ? {} : { assignees: { some: { userId: me.id } } })
+    },
+    select: { id: true, title: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return (
+    <CommentsClient
+      projectId={project.id}
+      projectName={project.name}
+      projectKey={project.key}
+      tasks={tasks}
+      members={project.members.map((m) => ({
+        id: m.userId,
+        name: m.user.name,
+        email: m.user.email,
+      }))}
+      currentUserRole={membership?.role}
+    />
   );
 }

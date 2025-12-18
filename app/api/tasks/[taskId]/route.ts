@@ -1,92 +1,103 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireProjectRole } from '@/lib/authz';
-import { z } from 'zod';
+// apps/web/app/api/tasks/[taskId]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";        // chỉnh path cho đúng dự án bạn
+import { prisma } from "@/lib/prisma"; // hoặc "@/lib/prisma" nếu bạn dùng file khác
 
-// Next 15 đôi khi params là Promise:
-type Ctx = { params: { taskId: string } } | { params: Promise<{ taskId: string }> };
-const getParams = async (p: any) => (typeof p?.then === 'function' ? await p : p);
-
-const UpdateTask = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().nullable().optional(),
-  status: z.enum(['TODO','IN_PROGRESS','REVIEW','BLOCKED','DONE','CANCELLED']).optional(),
-  priority: z.enum(['LOW','MEDIUM','HIGH','CRITICAL']).optional(),
-
-  assigneeIds: z.array(z.string()).optional(),
-  followerId: z.string().nullable().optional(), // NEW
-
-  startDate: z.preprocess(v => (v === '' ? null : v), z.coerce.date().nullable().optional()),
-  dueDate:   z.preprocess(v => (v === '' ? null : v), z.coerce.date().nullable().optional()),
-  estimateHours: z.preprocess(v => (v === '' ? null : v), z.coerce.number().nullable().optional()),
-});
-
-export async function GET(_: Request, ctx: Ctx) {
-  try {
-    const { taskId } = await getParams((ctx as any).params);
-    const t = await prisma.task.findUnique({ where: { id: taskId }, include: { project: true } });
-    if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    await requireProjectRole(t.projectId, 'VIEWER');
-    return NextResponse.json(t);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.status || 500 });
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ taskId: string }> },
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-}
 
-export async function PATCH(req: Request, ctx: Ctx) {
-  try {
-    const { taskId } = await getParams((ctx as any).params);
+  const { taskId } = await ctx.params;
+  const url = new URL(req.url);
+  const limit = Number(url.searchParams.get("limit") ?? "50");
 
-    const t0 = await prisma.task.findUnique({ where: { id: taskId }, select: { projectId: true } });
-    if (!t0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    // Chỉ LEAD/MANAGER được giao việc/sửa phân công
-    await requireProjectRole(t0.projectId, 'LEAD');
-
-    const data = UpdateTask.parse(await req.json());
-
-    const updated = await prisma.$transaction(async (tx) => {
-  const u = await tx.task.update({
-    where: { id: params.taskId },
-    data: {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      description: data.description ?? undefined,
-      status: (data.status as any) ?? undefined,
-      priority: (data.priority as any) ?? undefined,
-      startDate: data.startDate ?? undefined,
-      dueDate:   data.dueDate   ?? undefined,
-      estimateHours: data.estimateHours ?? undefined,
-      followerId: data.followerId ?? undefined,   // NEW
+  // TODO: check quyền của user trên task/project nếu bạn đã có RBAC
+  const items = await prisma.taskActivity.findMany({
+    where: { taskId },
+    include: {
+      actor: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
     },
-    select: { id: true, projectId: true },
+    orderBy: { createdAt: "desc" },
+    take: isNaN(limit) ? 50 : limit,
   });
 
-  if (data.assigneeIds) {
-    await tx.taskAssignee.deleteMany({ where: { taskId: params.taskId } });
-    if (data.assigneeIds.length) {
-      await tx.taskAssignee.createMany({
-        data: data.assigneeIds.map(uid => ({ taskId: params.taskId, userId: uid })),
-      });
-    }
-  }
-  return u;
-});
-
-    return NextResponse.json(updated);
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: e?.status ?? 500 });
-  }
+  return NextResponse.json({
+    items: items.map((a) => ({
+      id: a.id,
+      type: a.type,                          // "TASK_CREATED" ... ActivityType (FE dùng luôn)
+      message: a.message,
+      createdAt: a.createdAt.toISOString(),
+      actor: a.actor,
+      meta: a.meta,
+    })),
+  });
 }
 
-export async function DELETE(_: Request, ctx: Ctx) {
-  try {
-    const { taskId } = await getParams((ctx as any).params);
-    const t = await prisma.task.findUnique({ where: { id: taskId }, select: { projectId: true } });
-    if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    await requireProjectRole(t.projectId, 'MEMBER');
-    await prisma.task.delete({ where: { id: taskId } });
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.status || 500 });
+// Optional: POST để log thủ công (giúp bạn test nhanh)
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { taskId: string } },
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { taskId } = params;
+  const body = await req.json();
+
+  const { type, message, meta } = body as {
+    type: string;
+    message?: string;
+    meta?: unknown;
+  };
+
+  if (!type) {
+    return NextResponse.json({ error: "Missing type" }, { status: 400 });
+  }
+
+  const activity = await prisma.taskActivity.create({
+    data: {
+      taskId,
+      type: type as any,           // ActivityType
+      message,
+      meta: meta as any,
+      actorId: session.user.id as string,
+    },
+    include: {
+      actor: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+    },
+  });
+
+  return NextResponse.json(
+    {
+      id: activity.id,
+      type: activity.type,
+      message: activity.message,
+      createdAt: activity.createdAt.toISOString(),
+      actor: activity.actor,
+      meta: activity.meta,
+    },
+    { status: 201 },
+  );
 }

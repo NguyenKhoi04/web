@@ -1,3 +1,4 @@
+// app/components/InviteMemberModal.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,7 +13,7 @@ export default function InviteMemberModal({
   onInvited,
   projectOptions = [],
   defaultProjectId,
-  existingMemberIds = [], 
+  existingMemberIds = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -63,23 +64,23 @@ export default function InviteMemberModal({
       return;
     }
     const t = setTimeout(async () => {
-  try {
-    setSuggestLoading(true);
-    const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
-const data = await res.json();
-const filtered = (data.items ?? []).filter(
-  (u: UserItem) => !existingMemberIds.includes(u.id)
-);
-setSuggestions(filtered);
-setSuggestOpen(true);
-setHighlight(-1);
-  } catch {
-    setSuggestions([]);
-    setSuggestOpen(false);
-  } finally {
-    setSuggestLoading(false);
-  }
-}, 250);
+      try {
+        setSuggestLoading(true);
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+        const data = await res.json();
+        const filtered = (data.items ?? []).filter(
+          (u: UserItem) => !existingMemberIds.includes(u.id)
+        );
+        setSuggestions(filtered);
+        setSuggestOpen(true);
+        setHighlight(-1);
+      } catch {
+        setSuggestions([]);
+        setSuggestOpen(false);
+      } finally {
+        setSuggestLoading(false);
+      }
+    }, 250);
     return () => clearTimeout(t);
   }, [query, projectId, open]);
 
@@ -126,20 +127,22 @@ setHighlight(-1);
 
         {/* body */}
         <div className="p-5 space-y-4">
-          {/* Dự án */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Dự án</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              {projectOptions.length === 0 && <option value="">(Không có dự án)</option>}
-              {projectOptions.map((p) => (
-                <option key={p.id} value={p.id}>{projectLabel(p)}</option>
-              ))}
-            </select>
-          </div>
+          {/* Dự án (ẩn nếu chỉ có 1 lựa chọn) */}
+          {projectOptions.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dự án</label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2"
+              >
+                {projectOptions.length === 0 && <option value="">(Không có dự án)</option>}
+                {projectOptions.map((p) => (
+                  <option key={p.id} value={p.id}>{projectLabel(p)}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Email / tìm người dùng */}
           <div className="relative">
@@ -152,7 +155,7 @@ setHighlight(-1);
               onKeyDown={(e) => {
                 if (!suggestOpen || !suggestions.length) return;
                 if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, suggestions.length - 1)); }
-                if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
                 if (e.key === 'Enter' && highlight >= 0) { e.preventDefault(); pickSuggestion(suggestions[highlight]); }
               }}
               placeholder="Tìm theo tên hoặc email"

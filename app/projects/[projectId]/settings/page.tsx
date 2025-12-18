@@ -1,3 +1,4 @@
+// app/projects/[projectId]/settings/page.tsx
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,15 +9,18 @@ import { getServerSession } from "next-auth/next";
 import {
   Settings, Save, Hash, FileText, ChevronLeft, Users as UsersIcon,
 } from "lucide-react";
+import { logProjectActivity } from "@/lib/activity-log";
+import ProjectMembersSettings from "./ProjectMembersSettings";
+import { requireUser } from "@/lib/authz";
 
 /** ===== Status config (slug lưu DB, label hiển thị) ===== */
 export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'done';
 
 export const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
-  { value: 'planning',    label: 'Đang lên kế hoạch' },
+  { value: 'planning', label: 'Đang lên kế hoạch' },
   { value: 'in_progress', label: 'Đang triển khai' },
-  { value: 'review',      label: 'Đang đánh giá / nghiệm thu' },
-  { value: 'done',        label: 'Hoàn thành' },
+  { value: 'review', label: 'Đang đánh giá / nghiệm thu' },
+  { value: 'done', label: 'Hoàn thành' },
 ];
 
 export const DEFAULT_PROJECT_STATUS: ProjectStatus = 'planning';
@@ -62,9 +66,22 @@ export async function updateProjectAction(projectId: string, formData: FormData)
     if (!exists) redirect(`/projects/${projectId}/settings?error=lead_not_member`);
   }
 
-  await prisma.project.update({
+  const before = await prisma.project.findUnique({
+    where: { id: projectId },
+  });
+
+  const updated = await prisma.project.update({
     where: { id: projectId },
     data: { name, description: description ?? null, status, leadId },
+  });
+
+  // 👇 Ghi lịch sử hệ thống
+  await logProjectActivity({
+    projectId,
+    actorId: session.user.id,          // người đang chỉnh sửa
+    type: "PROJECT_UPDATED",
+    message: "Cập nhật thông tin dự án",
+    meta: { before, after: updated },  // có thể bỏ nếu muốn log nhẹ
   });
 
   revalidatePath(`/projects/${projectId}`, "page");
@@ -77,6 +94,14 @@ export default async function ProjectSettingsPage({
   params,
 }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+
+  // Fetch current user role for client component
+  const me = await requireUser();
+  const membership = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId, userId: me.id } },
+    select: { role: true },
+  });
+  const currentUserRole = membership?.role || 'VIEWER';
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -106,7 +131,7 @@ export default async function ProjectSettingsPage({
   }
 
   // Chuẩn hóa defaultValue cho select status (fallback về planning nếu DB có giá trị lạ)
-  const ALLOWED: ProjectStatus[] = ['planning','in_progress','review','done'];
+  const ALLOWED: ProjectStatus[] = ['planning', 'in_progress', 'review', 'done'];
   const safeStatus: ProjectStatus = ALLOWED.includes(project.status as ProjectStatus)
     ? (project.status as ProjectStatus)
     : DEFAULT_PROJECT_STATUS;
@@ -145,13 +170,26 @@ export default async function ProjectSettingsPage({
         if (!exists) redirect(`/projects/${projectId}/settings?error=lead_not_member`);
       }
 
-      await prisma.project.update({
+      const before = await prisma.project.findUnique({
+        where: { id: projectId },
+      });
+
+      const updated = await prisma.project.update({
         where: { id: projectId },
         data: { name, description: description ?? null, status, leadId },
       });
 
-      revalidatePath(`/projects/${projectId}`, "page");          // trang chi tiết
-      revalidatePath(`/projects/${projectId}/settings`, "page"); // chính trang settings
+      // 👇 Ghi lịch sử hệ thống
+      await logProjectActivity({
+        projectId,
+        actorId: session.user.id,          // người đang chỉnh sửa
+        type: "PROJECT_UPDATED",
+        message: "Cập nhật thông tin dự án",
+        meta: { before, after: updated },  // có thể bỏ nếu muốn log nhẹ
+      });
+
+      revalidatePath(`/projects/${projectId}`, "page");
+      revalidatePath(`/projects/${projectId}/settings`, "page");
       redirect(`/projects/${projectId}/settings?saved=1`);
     };
   }
@@ -181,6 +219,22 @@ export default async function ProjectSettingsPage({
             </div>
           </div>
         </div>
+
+        {/* Quản lý thành viên */}
+        <ProjectMembersSettings
+          projectId={project.id}
+          initialMembers={project.members.map(m => ({
+            userId: m.userId,
+            role: m.role,
+            user: {
+              id: m.user.id,
+              name: m.user.name,
+              email: m.user.email,
+              image: m.user.image,
+            }
+          }))}
+          currentUserRole={currentUserRole}
+        />
 
         {/* Form */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
@@ -236,27 +290,7 @@ export default async function ProjectSettingsPage({
             </div>
 
             {/* Trưởng dự án (lead) */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <UsersIcon className="w-4 h-4" />
-                Trưởng dự án (Lead)
-              </label>
-              <select
-                name="leadId"
-                defaultValue={project.leadId ?? "none"}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:bg-white focus:border-blue-500"
-              >
-                <option value="none">— Không chỉ định —</option>
-                {project.members.map((m) => (
-                  <option key={m.user.id} value={m.user.id}>
-                    {m.user.name || m.user.email}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500">
-                Chỉ có thể chọn người đã là thành viên của dự án.
-              </p>
-            </div>
+
 
             <div className="flex gap-3 pt-4">
               <button
@@ -275,8 +309,10 @@ export default async function ProjectSettingsPage({
               </Link>
             </div>
           </form>
+
         </div>
       </div>
-    </div>
+    </div >
   );
 }
+

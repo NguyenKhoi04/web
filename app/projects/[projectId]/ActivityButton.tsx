@@ -1,26 +1,26 @@
+// app/projects/[projectId]/ActivityButton.tsx
 "use client";
 
-import { useState } from "react";
-import { History } from "lucide-react";
-import ActivityDrawer from "@/app/components/ActivityDrawer";
+import React from "react";
+import ProjectActivityDrawerWithApi from '@/app/components/ActivityDrawer';
+
 
 export default function ActivityButton({ projectId }: { projectId: string }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="ml-auto inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
-        title="Lịch sử hoạt động"
+        className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
       >
-        <History className="w-4 h-4" /> 
+        Xem lịch sử dự án
       </button>
 
-      <ActivityDrawer
+      <ProjectActivityDrawerWithApi
+        projectId={projectId}
         open={open}
         onClose={() => setOpen(false)}
-        filters={{ projectId }}
       />
     </>
   );

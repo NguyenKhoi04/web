@@ -12,18 +12,20 @@ const Update = z.object({
   status: z.nativeEnum(SprintStatus).optional(),
 });
 
-export async function PATCH(req: Request, { params }: { params: { projectId: string; sprintId: string } }) {
-  await requireProjectRole(params.projectId, "LEAD");
+export async function PATCH(req: Request, { params }: { params: Promise<{ projectId: string; sprintId: string }> }) {
+  const { projectId, sprintId } = await params;
+  await requireProjectRole(projectId, "LEAD");
   const data = Update.parse(await req.json());
   const s = await prisma.sprint.update({
-    where: { id: params.sprintId },
+    where: { id: sprintId },
     data,
   });
   return NextResponse.json(s);
 }
 
-export async function DELETE(_req: Request, { params }: { params: { projectId: string; sprintId: string } }) {
-  await requireProjectRole(params.projectId, "LEAD");
-  await prisma.sprint.delete({ where: { id: params.sprintId } });
+export async function DELETE(_req: Request, { params }: { params: Promise<{ projectId: string; sprintId: string }> }) {
+  const { projectId, sprintId } = await params;
+  await requireProjectRole(projectId, "LEAD");
+  await prisma.sprint.delete({ where: { id: sprintId } });
   return NextResponse.json({ ok: true });
 }

@@ -1,3 +1,4 @@
+// app/projects/[projectId]/progress/page.tsx
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import {
@@ -10,7 +11,10 @@ import {
   Target,
   Users,
   Hash,
+  ShieldCheck,
 } from "lucide-react";
+import { requireProjectRole } from "@/lib/authz";
+import CompletionReportsClient from "./CompletionReportsClient";
 
 // helpers
 const fmtDate = (d?: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : "—");
@@ -50,6 +54,31 @@ export default async function ProjectProgressPage({
     );
   }
 
+  // --- Access Control
+  try {
+    await requireProjectRole(projectId, "LEAD");
+  } catch (error: any) {
+    if (error.status === 403 || error.message === "FORBIDDEN") {
+      return (
+        <div className="min-h-screen grid place-items-center p-6 bg-gray-50">
+          <div className="bg-white border rounded-2xl p-10 text-center max-w-md shadow-xl">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Không có quyền truy cập</h1>
+            <p className="text-gray-600 mb-6">
+              Trang này chỉ dành cho <strong>Quản lý (Manager)</strong> hoặc <strong>Trưởng nhóm (Lead)</strong> của dự án.
+            </p>
+            <Link href={`/projects/${projectId}`} className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-colors font-medium">
+              Quay lại dự án
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    throw error;
+  }
+
   // --- Task stats
   const byStatus = await prisma.task.groupBy({
     by: ["status"],
@@ -83,6 +112,26 @@ export default async function ProjectProgressPage({
       dueDate: { gte: now, lte: in7 },
     },
   });
+
+  // --- Task Completion Reports
+  // Fetch broader set of updates and filter in memory to avoid Prisma JSON path issues with MySQL
+  const recentactivity = await prisma.activityLog.findMany({
+    where: {
+      projectId,
+      type: "TASK_UPDATED",
+      // meta: { path: ["type"], equals: "COMPLETION_REPORT" }, // Causing generic Prisma error on some DBs
+    },
+    include: {
+      actor: { select: { id: true, name: true, email: true } },
+      task: { select: { id: true, title: true, status: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50, // Fetch more to filter down
+  });
+
+  const completionLogs = recentactivity
+    .filter((log) => (log.meta as any)?.type === "COMPLETION_REPORT")
+    .slice(0, 20);
 
   // --- Workload by member (đếm task mở theo assignee)
   const openTasks = await prisma.task.findMany({
@@ -166,6 +215,9 @@ export default async function ProjectProgressPage({
             </div>
           </div>
         </div>
+
+        {/* Task Completion Reports */}
+        <CompletionReportsClient projectId={projectId} initialLogs={completionLogs as any} />
 
         {/* KPI cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -328,22 +380,24 @@ export default async function ProjectProgressPage({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Footer actions */}
-        <div className="flex justify-center gap-3">
-          <Link
-            href={`/projects/${project.id}`}
-            className="px-5 py-3 rounded-xl border bg-white hover:bg-gray-50 text-gray-800"
-          >
-            Về trang dự án
-          </Link>
-          <Link
-            href={`/projects/${project.id}/tasks`}
-            className="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Xem danh sách nhiệm vụ
-          </Link>
-        </div>
+
+
+      {/* Footer actions */}
+      <div className="flex justify-center gap-3">
+        <Link
+          href={`/projects/${project.id}`}
+          className="px-5 py-3 rounded-xl border bg-white hover:bg-gray-50 text-gray-800"
+        >
+          Về trang dự án
+        </Link>
+        <Link
+          href={`/projects/${project.id}/tasks`}
+          className="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+        >
+          Xem danh sách nhiệm vụ
+        </Link>
       </div>
     </div>
   );

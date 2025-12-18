@@ -1,3 +1,4 @@
+// apps/web/app/(auth)/sign-in/page.tsx
 'use client';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +12,9 @@ const LoginPage = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const router = useRouter();
   const sp = useSearchParams();
-  const callbackUrl = sp.get("callbackUrl") || "/";
+  const rawCb = sp.get("callbackUrl");
+  // Chỉ chấp nhận internal path, mặc định /after-login
+  const callbackUrl = rawCb && rawCb.startsWith("/") ? rawCb : "/after-login";
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -32,7 +35,7 @@ const LoginPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-// ĐĂNG NHẬP bằng Credentials
+  // ĐĂNG NHẬP bằng Credentials
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -64,8 +67,8 @@ const LoginPage = () => {
     // Với OAuth nên để redirect = true để NextAuth tự chuyển trang
     signIn(provider, { callbackUrl });
   };
-return (
-  <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-purple-800 flex items-center justify-center p-4">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-purple-800 flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
@@ -101,16 +104,9 @@ return (
               disabled={isLoading}
             >
               <Chrome className="w-5 h-5" />
-              <span className="font-medium">Đăng nhập với Google</span>
+              <span className="font-medium">Đăng nhập với Email</span>
             </button>
-            <button
-              onClick={() => handleSocialLogin("github")}
-              className="w-full flex items-center justify-center space-x-3 py-3 px-4 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-xl text-white transition-all duration-300 hover:scale-[1.02]"
-              disabled={isLoading}
-            >
-              <Github className="w-5 h-5" />
-              <span className="font-medium">Đăng nhập với GitHub</span>
-            </button>
+
           </div>
 
           {/* Divider */}
@@ -134,9 +130,8 @@ return (
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-md border ${
-                    errors.email ? "border-red-400" : "border-white/30"
-                  } rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all duration-300`}
+                  className={`w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-md border ${errors.email ? "border-red-400" : "border-white/30"
+                    } rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all duration-300`}
                   placeholder="Nhập email của bạn"
                   autoComplete="email"
                 />
@@ -153,9 +148,8 @@ return (
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`w-full pl-12 pr-12 py-3 bg-white/20 backdrop-blur-md border ${
-                    errors.password ? "border-red-400" : "border-white/30"
-                  } rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all duration-300`}
+                  className={`w-full pl-12 pr-12 py-3 bg-white/20 backdrop-blur-md border ${errors.password ? "border-red-400" : "border-white/30"
+                    } rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all duration-300`}
                   placeholder="Nhập mật khẩu"
                   autoComplete="current-password"
                 />
@@ -181,7 +175,7 @@ return (
                 />
                 <span className="text-white/80 text-sm">Ghi nhớ đăng nhập</span>
               </label>
-              <button type="button" className="text-white/80 hover:text-white text-sm transition-colors">
+              <button type="button" onClick={() => router.push('/forgot-password')} className="text-white/80 hover:text-white text-sm transition-colors">
                 Quên mật khẩu?
               </button>
             </div>

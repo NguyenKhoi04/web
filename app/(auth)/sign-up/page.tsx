@@ -202,13 +202,7 @@ if (!res.ok) {
               <Chrome className="w-5 h-5" />
               <span className="font-medium">Đăng ký với Google</span>
             </button>
-            <button
-              onClick={() => handleSocialRegister('github')}
-              className="w-full flex items-center justify-center space-x-3 py-3 px-4 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-xl text-white transition-all duration-300 hover:scale-[1.02]"
-            >
-              <Github className="w-5 h-5" />
-              <span className="font-medium">Đăng ký với GitHub</span>
-            </button>
+          
           </div>
 
           {/* Divider */}

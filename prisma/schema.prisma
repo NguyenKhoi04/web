@@ -43,21 +43,25 @@ model User {
   organizations          OrganizationMember[]
   projectsCreated        Project[]             @relation("ProjectCreator")
   projectsLed            Project[]             @relation("ProjectLead")
+  projectActivities      ProjectActivity[]     @relation("UserProjectActivities")
   projectComments        ProjectComment[]
   projectInvitesSent     ProjectInvite[]       @relation("InvitedByUser")
   projectInvitesReceived ProjectInvite[]       @relation("RecipientUser")
+  organizationInvitesSent     OrganizationInvite[]       @relation("OrgInvitedByUser")
+  organizationInvitesReceived OrganizationInvite[]       @relation("OrgRecipientUser")
   projectMemberships     ProjectMember[]
   resources              Resource[]
   sessions               Session[]
   sprintsCreated         Sprint[]              @relation("SprintCreatedBy")
   SystemSetting          SystemSetting[]
   tasksCreated           Task[]                @relation("TaskCreatedBy")
+  followedTasks          Task[]                @relation("TaskFollower")
   tasksUpdated           Task[]                @relation("TaskUpdatedBy")
+  taskActivities         TaskActivity[]        @relation("UserTaskActivities")
   taskAssignments        TaskAssignee[]
   attachmentsAdded       TaskAttachment[]
   comments               TaskComment[]
   timeEntries            TimeEntry[]
-  followedTasks         Task[] 
   suspendedBy            User?                 @relation("UserSuspendedBy", fields: [suspendedById], references: [id])
   suspendedUsers         User[]                @relation("UserSuspendedBy")
 
@@ -111,6 +115,7 @@ model Organization {
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
   members   OrganizationMember[]
+  invites   OrganizationInvite[]
   projects  Project[]
 
   @@index([slug])
@@ -134,8 +139,8 @@ model Project {
   organizationId      String
   key                 String                @unique
   name                String
-  description         String?
-  status         String   @default("active")
+  description         String?               @db.Text
+  status              String                @default("active")
   startDate           DateTime?
   dueDate             DateTime?
   leadId              String?
@@ -152,6 +157,7 @@ model Project {
   createdBy           User                  @relation("ProjectCreator", fields: [createdById], references: [id])
   lead                User?                 @relation("ProjectLead", fields: [leadId], references: [id])
   organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectActivities   ProjectActivity[]
   projectComments     ProjectComment[]
   invites             ProjectInvite[]
   members             ProjectMember[]
@@ -197,7 +203,7 @@ model Task {
   columnId         String?
   sprintId         String?
   title            String
-  description      String?
+  description      String?          @db.Text
   status           TaskStatus       @default(TODO)
   priority         Priority         @default(MEDIUM)
   points           Int?
@@ -207,32 +213,33 @@ model Task {
   order            Int?
   createdById      String
   updatedById      String?
-  followerId       String?
-  follower User?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  followerId       String?
   activities       ActivityLog[]
   events           CalendarEvent[]
   Notification     Notification[]
-
   column           BoardColumn?     @relation(fields: [columnId], references: [id])
   createdBy        User             @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  follower         User?            @relation("TaskFollower", fields: [followerId], references: [id])
   project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprint           Sprint?          @relation(fields: [sprintId], references: [id])
   updatedBy        User?            @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
-   
-   sprint      Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-
+  taskActivities   TaskActivity[]
   assignees        TaskAssignee[]
   attachments      TaskAttachment[]
   comments         TaskComment[]
   dependenciesFrom TaskDependency[] @relation("FromTask")
   dependenciesTo   TaskDependency[] @relation("ToTask")
   tags             TaskTag[]
+  milestoneId      String?
+  milestone        Milestone?       @relation(fields: [milestoneId], references: [id])
   timeEntries      TimeEntry[]
 
   @@index([projectId, status, priority])
   @@index([columnId, order])
   @@index([sprintId])
+  @@index([milestoneId])
   @@index([createdById], map: "Task_createdById_fkey")
   @@index([updatedById], map: "Task_updatedById_fkey")
   @@index([followerId])
@@ -300,6 +307,7 @@ model ProjectComment {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   mentions  CommentMention[]
+  attachments Json?
   author    User             @relation(fields: [authorId], references: [id])
   parent    ProjectComment?  @relation("ProjectCommentReplies", fields: [parentId], references: [id])
   replies   ProjectComment[] @relation("ProjectCommentReplies")
@@ -366,21 +374,22 @@ model Sprint {
   createdAt   DateTime     @default(now())
   createdById String?
   updatedAt   DateTime     @updatedAt
-
   createdBy   User?        @relation("SprintCreatedBy", fields: [createdById], references: [id])
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  tasks   Task[] 
+  milestoneId String?
+  milestone   Milestone?   @relation(fields: [milestoneId], references: [id])
+  tasks       Task[]
 
   @@index([projectId, startDate, endDate])
   @@index([projectId, status])
   @@index([createdById], map: "Sprint_createdById_fkey")
+  @@index([milestoneId])
 }
 
 model Milestone {
   id          String          @id @default(cuid())
   projectId   String
-  description String?
+  description String?     @db.Text
   dueDate     DateTime
   status      String          @default("open")
   ownerId     String?
@@ -389,6 +398,10 @@ model Milestone {
   events      CalendarEvent[]
   owner       User?           @relation(fields: [ownerId], references: [id])
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  startDate   DateTime? // Optional start date if needed
+  sprints     Sprint[]
+  tasks       Task[] // Tasks directly linked to milestone
 
   @@index([projectId, dueDate])
   @@index([ownerId], map: "Milestone_ownerId_fkey")
@@ -606,6 +619,110 @@ model ProjectInvite {
   @@index([invitedById], map: "ProjectInvite_invitedById_fkey")
 }
 
+model OrganizationInvite {
+  id          String       @id @default(cuid())
+  organizationId String
+  recipientId String
+  role        OrgRole      @default(MEMBER)
+  token       String       @unique
+  status      InviteStatus @default(PENDING)
+  expiresAt   DateTime?
+  invitedById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  invitedBy   User?        @relation("OrgInvitedByUser", fields: [invitedById], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipient   User         @relation("OrgRecipientUser", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([recipientId, status])
+  @@index([invitedById], map: "OrganizationInvite_invitedById_fkey")
+}
+
+model HelpArticle {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  contentMd   String   @db.Text
+  category    String?
+  tags        String?
+  orgId       String?
+  projectId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isPublished Boolean  @default(true)
+}
+
+model ChatSession {
+  id        String         @id @default(cuid())
+  userId    String?
+  orgId     String?
+  projectId String?
+  title     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  feedbacks ChatFeedback[]
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id             String      @id @default(cuid())
+  sessionId      String
+  role           String
+  content        String      @db.Text
+  toolName       String?
+  toolArgsJson   String?
+  toolResultJson String?
+  orgId          String?
+  projectId      String?
+  createdAt      DateTime    @default(now())
+  session        ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "ChatMessage_sessionId_fkey")
+}
+
+model ChatFeedback {
+  id        String      @id @default(cuid())
+  sessionId String
+  messageId String?
+  rating    Int
+  comment   String?
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "ChatFeedback_sessionId_fkey")
+}
+
+model ProjectActivity {
+  id        String       @id @default(cuid())
+  projectId String
+  type      ActivityType
+  message   String?      @db.Text
+  meta      Json?
+  actorId   String?
+  createdAt DateTime     @default(now())
+  actor     User?        @relation("UserProjectActivities", fields: [actorId], references: [id])
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([actorId], map: "ProjectActivity_actorId_fkey")
+}
+
+model TaskActivity {
+  id        String       @id @default(cuid())
+  taskId    String
+  type      ActivityType
+  message   String?      @db.Text
+  meta      Json?
+  actorId   String?
+  createdAt DateTime     @default(now())
+  actor     User?        @relation("UserTaskActivities", fields: [actorId], references: [id])
+  task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt(sort: Desc)])
+  @@index([actorId], map: "TaskActivity_actorId_fkey")
+}
+
 enum OrgRole {
   OWNER
   ADMIN
@@ -671,13 +788,16 @@ enum DependencyType {
 
 enum NotificationType {
   TASK_ASSIGNED
+  TASK_CREATED
   TASK_STATUS_CHANGED
   COMMENT_ADDED
   DEADLINE_SOON
   MENTION
   PROJECT_INVITE
+  ORGANIZATION_INVITE
   PROJECT_COMMENT_MENTION
   PROJECT_COMMENT_REPLY
+  SYSTEM_BROADCAST
 }
 
 enum ActivityType {
@@ -717,4 +837,5 @@ enum InviteStatus {
   ACCEPTED
   REVOKED
   EXPIRED
+  DECLINED
 }

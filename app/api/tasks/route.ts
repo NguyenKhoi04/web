@@ -6,10 +6,11 @@ import { z } from "zod";
 
 const Query = z.object({
   q: z.string().optional(),
-  status: z.enum(["TODO","IN_PROGRESS","REVIEW","BLOCKED","DONE","CANCELLED"]).optional(),
+  status: z.enum(["TODO", "IN_PROGRESS", "REVIEW", "BLOCKED", "DONE", "CANCELLED"]).optional(),
   projectId: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(20),
+  filter: z.enum(["all", "me"]).optional(),
 });
 
 export async function GET(req: Request) {
@@ -22,6 +23,7 @@ export async function GET(req: Request) {
     projectId: searchParams.get("projectId") ?? undefined,
     page: searchParams.get("page") ?? undefined,
     pageSize: searchParams.get("pageSize") ?? undefined,
+    filter: searchParams.get("filter") ?? undefined,
   });
 
   // project mà user đang tham gia
@@ -35,18 +37,30 @@ export async function GET(req: Request) {
     ? parsed.projectId
     : undefined;
 
-  const where = {
+  const where: any = {
     projectId: projectFilter ? projectFilter : { in: myProjectIds },
     ...(parsed.status ? { status: parsed.status } : {}),
     ...(parsed.q
       ? {
-          OR: [
-            { title: { contains: parsed.q, mode: "insensitive" } },
-            { description: { contains: parsed.q, mode: "insensitive" } },
-          ],
-        }
+        OR: [
+          { title: { contains: parsed.q, mode: "insensitive" } },
+          { description: { contains: parsed.q, mode: "insensitive" } },
+        ],
+      }
       : {}),
   };
+
+  // Filter "me": Assignee OR Follower
+  if (parsed.filter === 'me') {
+    where.AND = [
+      {
+        OR: [
+          { assignees: { some: { userId: me.id } } },
+          { followerId: me.id },
+        ]
+      }
+    ];
+  }
 
   const skip = (parsed.page - 1) * parsed.pageSize;
   const [items, total, projects] = await Promise.all([
@@ -72,6 +86,7 @@ export async function GET(req: Request) {
           take: 3,
           select: { user: { select: { id: true, name: true, email: true } } },
         },
+        follower: { select: { id: true, name: true, email: true } },
       },
     }),
     prisma.task.count({ where }),

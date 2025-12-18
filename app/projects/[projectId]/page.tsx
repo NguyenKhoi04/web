@@ -17,6 +17,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+
 import Link from "next/link";
 
 // ---- helpers ----------------------------------------------------
@@ -231,21 +232,22 @@ export default async function ProjectDetail({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+
         {/* Header */}
         <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
           <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 md:px-8 py-8 md:py-10">
             <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]"></div>
             <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-            
+
             <div className="relative">
-              <Link 
-                href="/dashboard" 
+              <Link
+                href="/dashboard"
                 className="inline-flex items-center gap-2 text-white/90 hover:text-white mb-4 group transition-colors"
               >
                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                 <span className="text-sm font-medium">Quay lại Dashboard</span>
               </Link>
-              
+
               <div className="flex items-start gap-4 mb-4">
                 <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg">
                   <FolderKanban className="w-8 h-8 text-white" />
@@ -379,27 +381,27 @@ export default async function ProjectDetail({
 
         {/* Quick stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard 
-            label="Tổng nhiệm vụ" 
-            value={project._count.tasks} 
+          <StatCard
+            label="Tổng nhiệm vụ"
+            value={project._count.tasks}
             icon={CheckCircle2}
             gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
           />
-          <StatCard 
-            label="Sprints" 
-            value={project._count.sprints} 
+          <StatCard
+            label="Sprints"
+            value={project._count.sprints}
             icon={Zap}
             gradient="bg-gradient-to-br from-purple-500 to-pink-600"
           />
-          <StatCard 
-            label="Milestones" 
-            value={project._count.milestones} 
+          <StatCard
+            label="Milestones"
+            value={project._count.milestones}
             icon={Target}
             gradient="bg-gradient-to-br from-green-500 to-emerald-600"
           />
-          <StatCard 
-            label="Tài nguyên" 
-            value={project._count.resources} 
+          <StatCard
+            label="Tài nguyên"
+            value={project._count.resources}
             icon={FileText}
             gradient="bg-gradient-to-br from-orange-500 to-amber-600"
           />
@@ -424,40 +426,40 @@ export default async function ProjectDetail({
             </div>
           </div>
 
-            <div className="p-6 md:p-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {project.members.map((member) => {
-                  const label = toUiRoleLabel(member.role as any);
-                  const avatarColors = ['from-blue-500 to-indigo-600', 'from-purple-500 to-pink-600', 'from-green-500 to-emerald-600', 'from-orange-500 to-amber-600', 'from-red-500 to-rose-600'];
-                  const colorIndex = member.userId.charCodeAt(0) % avatarColors.length;
-                  
-                  return (
-                    <div
-                      key={member.userId}
-                      className="group bg-gradient-to-br from-gray-50 to-blue-50 hover:from-blue-50 hover:to-indigo-50 rounded-2xl p-5 border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 bg-gradient-to-br ${avatarColors[colorIndex]} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                          <UserIcon className="w-7 h-7 text-white" />
+          <div className="p-6 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {project.members.map((member) => {
+                const label = toUiRoleLabel(member.role as any);
+                const avatarColors = ['from-blue-500 to-indigo-600', 'from-purple-500 to-pink-600', 'from-green-500 to-emerald-600', 'from-orange-500 to-amber-600', 'from-red-500 to-rose-600'];
+                const colorIndex = member.userId.charCodeAt(0) % avatarColors.length;
+
+                return (
+                  <div
+                    key={member.userId}
+                    className="group bg-gradient-to-br from-gray-50 to-blue-50 hover:from-blue-50 hover:to-indigo-50 rounded-2xl p-5 border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 bg-gradient-to-br ${avatarColors[colorIndex]} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                        <UserIcon className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-gray-900 truncate mb-2">
+                          {member.user.name || member.user.email}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-900 truncate mb-2">
-                            {member.user.name || member.user.email}
-                          </div>
-                          <div
-                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border-2 ${getRoleColor(
-                              label
-                            )} shadow-sm`}
-                          >
-                            {label}
-                          </div>
+                        <div
+                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border-2 ${getRoleColor(
+                            label
+                          )} shadow-sm`}
+                        >
+                          {label}
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
         </div>
 
         {/* Kanban columns overview */}

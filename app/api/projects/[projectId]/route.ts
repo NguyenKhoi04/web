@@ -1,9 +1,10 @@
 // apps/web/app/api/projects/[projectId]/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireProjectRole, requireUser } from '@/lib/authz';
+import { requireProjectRole, requireUser, getCurrentUser } from '@/lib/authz';
 import { isSysAdmin } from '@/lib/rbac';
 import { z } from 'zod';
+import { logProjectActivity } from "@/lib/activity-log";
 
 const UpdateProject = z.object({
   name: z.string().min(1).optional(),
@@ -42,32 +43,65 @@ export async function GET(_req: Request, ctx: Ctx) {
 
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
-    const { projectId } = await ctx.params;                // ✅ Next 15: await
-    await requireProjectRole(projectId, 'MANAGER');
+    const { projectId } = await ctx.params;
+    await requireProjectRole(projectId, "MANAGER");
+
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    }
 
     const data = UpdateProject.parse(await req.json());
 
-    // (khuyến nghị) nếu có leadId -> đảm bảo lead là thành viên dự án
+    // --- Lấy giá trị cũ để ghi log diff ---
+    const before = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        name: true,
+        description: true,
+        status: true,
+        leadId: true,
+      },
+    });
+
+    // Kiểm tra leadId có phải là thành viên không
     if (data.leadId != null) {
       const exists = await prisma.projectMember.findUnique({
         where: { projectId_userId: { projectId, userId: data.leadId } },
-        select: { userId: true },
       });
       if (!exists) {
         return NextResponse.json(
-          { error: 'leadId phải là thành viên của dự án' },
-          { status: 400 }
+          { error: "leadId phải là thành viên của dự án" },
+          { status: 400 },
         );
       }
     }
 
+    // --- Update Project ---
     const project = await prisma.project.update({
       where: { id: projectId },
       data: {
         name: data.name,
         description: data.description ?? undefined,
         status: data.status,
-        leadId: data.leadId ?? undefined, // cho phép null để xoá lead
+        leadId: data.leadId ?? undefined,
+      },
+    });
+
+    // --- Ghi Log Hoạt Động ---
+    await logProjectActivity({
+      projectId,
+      actorId: user.id,
+      type: "PROJECT_UPDATED",
+      message: "Cập nhật thông tin dự án",
+      meta: {
+        before,
+        after: {
+          name: project.name,
+          description: project.description,
+          status: project.status,
+          leadId: project.leadId,
+        },
       },
     });
 

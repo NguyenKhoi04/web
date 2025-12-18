@@ -1,3 +1,4 @@
+// apps/web/app/components/ActivityDrawer.tsx
 'use client';
 import React, { useEffect } from "react";
 import { X, Clock3, FileText, User, MessagesSquare, GitCompare, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
@@ -6,7 +7,6 @@ import { X, Clock3, FileText, User, MessagesSquare, GitCompare, CheckCircle2, Al
  * Activity Drawer UI (presentational only)
  * - Pure UI, no data fetching. Plug your data via props.
  * - TailwindCSS, no external state libs.
- * - Drop this file into: app/components/ActivityDrawer.tsx (or similar).
  */
 
 export type ActivityType =
@@ -61,9 +61,8 @@ export function ActivityDrawer({
 
       {/* Drawer */}
       <aside
-        className={`fixed right-0 top-0 z-[61] h-screen w-full max-w-xl transform bg-white shadow-2xl transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed right-0 top-0 z-[61] h-screen w-full max-w-xl transform bg-white shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"
+          }`}
         aria-hidden={!open}
       >
         {/* Header */}
@@ -119,7 +118,9 @@ export function ActivityDrawer({
                           {it.message ?? humanize(it.type)}
                         </p>
                         {it.meta ? (
-                          <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-gray-50 p-3 text-[11px] text-gray-600">{JSON.stringify(it.meta, null, 2)}</pre>
+                          <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-gray-50 p-3 text-[11px] text-gray-600">
+                            {JSON.stringify(it.meta, null, 2)}
+                          </pre>
                         ) : null}
                         <div className="mt-2 inline-flex items-center gap-1 text-[12px] text-gray-500">
                           <Clock3 className="h-3.5 w-3.5" />
@@ -144,11 +145,10 @@ export function ActivityDrawer({
 function FilterPill({ label, icon, active }: { label: string; icon?: React.ReactNode; active?: boolean }) {
   return (
     <button
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-        active
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active
           ? "border-blue-200 bg-blue-50 text-blue-700"
           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-      }`}
+        }`}
       type="button"
     >
       {icon}
@@ -262,56 +262,108 @@ function formatDateTime(d: string | Date) {
   return dt.toLocaleString();
 }
 
-/* ----------------------- Demo usage (remove if not needed) ---------------------- */
-export default function DemoActivityDrawer() {
-  const [open, setOpen] = React.useState(false);
-  const sample: ActivityItem[] = [
-    {
-      id: "1",
-      type: "TASK_STATUS_CHANGED",
-      message: "Status: TODO → IN_PROGRESS",
-      actor: { id: "u1", name: "Võ Minh", email: "minh@example.com" },
-      createdAt: new Date().toISOString(),
-      meta: { before: { status: "TODO" }, after: { status: "IN_PROGRESS" } },
-    },
-    {
-      id: "2",
-      type: "COMMENT_ADDED",
-      message: "Bình luận: Hôm nay mình nhận phần này",
-      actor: { id: "u2", name: "Quang Trường" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    },
-    {
-      id: "3",
-      type: "FILE_ATTACHED",
-      message: "Đã đính kèm file design-v2.png",
-      actor: { id: "u1", name: "Võ Minh" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    },
-    {
-      id: "4",
-      type: "TASK_CREATED",
-      message: "Tạo task: BOOK-12 Viết API comments",
-      actor: { id: "u3", name: "Đặng Vĩnh" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-  ];
+/* ----------------------- Wrapper dùng API cho PROJECT ---------------------- */
+
+type ProjectActivityApiItem = {
+  id: string;
+  type: ActivityType;
+  message: string | null;
+  meta: any | null;
+  createdAt: string;
+  actor: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
+};
+
+export function ProjectActivityDrawerWithApi({
+  projectId,
+  open,
+  onClose,
+}: {
+  projectId: string | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [items, setItems] = React.useState<ActivityItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !projectId) return;
+
+    let cancelled = false;
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await fetch(`/api/projects/${projectId}/activity?limit=50`, {
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json() as { items?: ProjectActivityApiItem[] } | ProjectActivityApiItem[];
+
+        const rawItems = Array.isArray(data)
+          ? data
+          : data.items || [];
+
+        if (cancelled) return;
+
+        const mapped: ActivityItem[] = rawItems.map((a) => ({
+          id: a.id,
+          type: a.type,
+          message: a.message,
+          meta: a.meta,
+          createdAt: a.createdAt,
+          actor: a.actor
+            ? {
+              id: a.actor.id,
+              name: a.actor.name,
+              email: a.actor.email,
+              image: a.actor.image,
+            }
+            : null,
+        }));
+
+        setItems(mapped);
+      } catch (e: any) {
+        if (cancelled) return;
+        setError(e?.message ?? "Không tải được lịch sử");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
+
+  const subtitle = error
+    ? `Lỗi: ${error}`
+    : loading
+      ? "Đang tải lịch sử hoạt động..."
+      : "Theo dõi thay đổi gần đây của dự án";
 
   return (
-    <div className="p-6">
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow hover:bg-gray-800"
-      >
-        Mở lịch sử hoạt động
-      </button>
-
-      <ActivityDrawer
-        open={open}
-        onClose={() => setOpen(false)}
-        items={sample}
-        subtitle="Theo dõi thay đổi gần đây của nhiệm vụ"
-      />
-    </div>
+    <ActivityDrawer
+      open={open}
+      onClose={onClose}
+      items={items}
+      title="Lịch sử hoạt động dự án"
+      subtitle={subtitle}
+    />
   );
 }
+
+// Nếu muốn import default:
+export default ProjectActivityDrawerWithApi;

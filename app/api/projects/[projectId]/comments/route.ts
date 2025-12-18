@@ -8,19 +8,24 @@ import { Prisma, $Enums } from "@/app/generated/prisma";
 const Query = z.object({
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(20),
-  parentId: z.string().optional(), // nếu truyền => lấy replies của 1 comment
+  parentId: z.string().optional(),
 });
 
 const Body = z.object({
-  content: z.string().min(1).max(5000),
-  parentId: z.string().optional(),  
-  mentions: z.array(z.string()).optional(), // userId được @mention
+  content: z.string().max(5000).default(""),
+  parentId: z.string().optional(),
+  mentions: z.array(z.string()).optional(),
+  attachments: z.array(z.any()).optional(),
 });
 
-type Ctx = { params: { projectId: string } };
+type Ctx = { params: Promise<{ projectId: string }> };
 
-export async function GET(req: Request, { params }: Ctx) {
-  await requireProjectRole(params.projectId, "VIEWER");
+/* --------------------------- GET: list comments --------------------------- */
+export async function GET(req: Request, ctx: Ctx) {
+  const { projectId } = await ctx.params;
+
+  await requireProjectRole(projectId, "VIEWER");
+
   const { searchParams } = new URL(req.url);
   const parsed = Query.parse({
     page: searchParams.get("page") ?? undefined,
@@ -29,8 +34,8 @@ export async function GET(req: Request, { params }: Ctx) {
   });
 
   const where = {
-    projectId: params.projectId,
-    parentId: parsed.parentId ?? null, // mặc định chỉ lấy top-level
+    projectId,
+    parentId: parsed.parentId ?? null,
   };
   const skip = (parsed.page - 1) * parsed.pageSize;
 
@@ -48,67 +53,104 @@ export async function GET(req: Request, { params }: Ctx) {
     prisma.projectComment.count({ where }),
   ]);
 
-  return NextResponse.json({ items, total, page: parsed.page, pageSize: parsed.pageSize });
+  return NextResponse.json({
+    items,
+    total,
+    page: parsed.page,
+    pageSize: parsed.pageSize,
+  });
 }
 
-export async function POST(req: Request, { params }: Ctx) {
-  const me = await requireProjectRole(params.projectId, "MEMBER");
-  const { content, parentId, mentions = [] } = Body.parse(await req.json());
+/* -------------------------- POST: create comment -------------------------- */
+export async function POST(req: Request, ctx: Ctx) {
+  const { projectId } = await ctx.params;
 
+  const me = await requireUser();                  // ✅ lấy user hiện tại
+  await requireProjectRole(projectId, "MEMBER");   // ✅ check quyền
+
+  const { content, parentId, mentions = [], attachments = [] } = Body.parse(await req.json());
+
+  // validate parentId nếu là reply
   if (parentId) {
-    const parent = await prisma.projectComment.findUnique({ where: { id: parentId } });
-    if (!parent || parent.projectId !== params.projectId) {
+    const parent = await prisma.projectComment.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent || parent.projectId !== projectId) {
       return NextResponse.json({ error: "Invalid parentId" }, { status: 400 });
     }
   }
 
   const created = await prisma.$transaction(async (tx) => {
+    // tạo comment
     const c = await tx.projectComment.create({
       data: {
-        projectId: params.projectId,
+        projectId,
         authorId: me.id,
         content,
         parentId: parentId ?? null,
+        attachments: attachments as Prisma.InputJsonValue,
       },
     });
 
-    // Mentions
+    // Mentions (@user)
     const uniq = Array.from(new Set(mentions.filter((u) => u !== me.id)));
 
-if (uniq.length) {
-  await tx.commentMention.createMany({
-    data: uniq.map((uid) => ({
-      projectCommentId: c.id,   // ← dùng projectCommentId
-      userId: uid,
-    })),
-    skipDuplicates: true,
-  });
+    if (uniq.length) {
+      // Get project name for notification
+      const project = await tx.project.findUnique({
+        where: { id: projectId },
+        select: { name: true },
+      });
 
-  await tx.notification.createMany({
-    data: uniq.map((uid) => ({
-      recipientId: uid,
-      type: "PROJECT_COMMENT_MENTION",
-      data: { projectId: params.projectId, commentId: c.id } as any,
-    })),
-  });
-}
+      await tx.commentMention.createMany({
+        data: uniq.map((uid) => ({
+          projectCommentId: c.id,
+          userId: uid,
+        })),
+        skipDuplicates: true,
+      });
 
-    // Notify người đã tham gia thread (reply)
+      await tx.notification.createMany({
+        data: uniq.map((uid) => ({
+          recipientId: uid,
+          type: $Enums.NotificationType.PROJECT_COMMENT_MENTION,
+          data: {
+            projectId,
+            commentId: c.id,
+            actorName: me.name || me.email,
+            projectName: project?.name || "Dự án",
+          } as Prisma.InputJsonValue,
+        })),
+      });
+    }
+
+    // Notify những người đã tham gia thread (reply)
     if (parentId) {
       const others = await tx.projectComment.findMany({
         where: { parentId },
         select: { authorId: true },
         distinct: ["authorId"],
       });
-      const recipients = Array.from(new Set(others.map(o => o.authorId).filter(id => id !== me.id)));
+
+      const recipients = Array.from(
+        new Set(
+          others
+            .map((o) => o.authorId)
+            .filter((id): id is string => !!id && id !== me.id)
+        )
+      );
+
       if (recipients.length) {
         await tx.notification.createMany({
-  data: recipients.map((uid) => ({
-    recipientId: uid,
-    type: $Enums.NotificationType.PROJECT_COMMENT_REPLY,   // ✅
-    data: { projectId: params.projectId, commentId: parentId } as Prisma.InputJsonValue,
-  })),
-});
+          data: recipients.map((uid) => ({
+            recipientId: uid,
+            type: $Enums.NotificationType.PROJECT_COMMENT_REPLY,
+            data: {
+              projectId,
+              commentId: parentId,
+            } as Prisma.InputJsonValue,
+          })),
+        });
       }
     }
 

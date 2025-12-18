@@ -12,6 +12,8 @@ import ProjectMore from "@/app/components/ProjectMore";
 import InviteMemberModal from "@/app/components/InviteMemberModal";
 import SprintCreateModal from "@/app/components/SprintCreateModal";
 import AssignTaskModal from '@/app/components/AssignTaskModal';
+import OrganizationList from '@/app/components/OrganizationList';
+import NotificationBell from '@/app/components/NotificationBell';
 
 /** Types */
 type Priority = 'low' | 'medium' | 'high';
@@ -71,6 +73,7 @@ type TaskRow = {
   project: { id: string; name: string; key?: string | null };
   column?: { id: string; name: string } | null;
   assignees?: { user: { id: string; name: string | null; email: string } }[];
+  follower?: { id: string; name: string | null; email: string } | null;
 };
 
 type TasksResp = {
@@ -86,13 +89,14 @@ const Dashboard = () => {
 
   // tab hiện tại
   const [activeTab, setActiveTab] =
-    useState<'dashboard'|'projects'|'tasks'|'kanban'|'calendar'|'team'|'reports'|'invites'>('projects');
+    useState<'dashboard' | 'projects' | 'tasks' | 'kanban' | 'calendar' | 'team' | 'reports' | 'invites'>('projects');
 
   // role hiển thị badge
-  const [userRole] = useState<'Project Manager'|'Project Member'>('Project Manager');
+  const [userRole] = useState<'Project Manager' | 'Project Member'>('Project Manager');
 
   // modal states
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteProject, setInviteProject] = useState<ProjectCardData | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [sprintProjectId, setSprintProjectId] = useState<string | null>(null);
@@ -111,12 +115,12 @@ const Dashboard = () => {
   // projects "tôi tham gia (không phải owner)"
   const [joinedProjects, setJoinedProjects] = useState<ProjectCardData[]>([]);
   const [joinedLoading, setJoinedLoading] = useState(false);
-  const [joinedErr, setJoinedErr] = useState<string|null>(null);
+  const [joinedErr, setJoinedErr] = useState<string | null>(null);
 
   // invites
   const [invites, setInvites] = useState<any[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
-  const [invitesErr, setInvitesErr] = useState<string|null>(null);
+  const [invitesErr, setInvitesErr] = useState<string | null>(null);
 
   // tasks overview table
   const [tasksData, setTasksData] = useState<TasksResp | null>(null);
@@ -126,6 +130,12 @@ const Dashboard = () => {
   const [taskStatus, setTaskStatus] = useState<string>("");
   const [taskProject, setTaskProject] = useState<string>("");
   const [taskPage, setTaskPage] = useState(1);
+
+  // reports
+  const [reportPeriod, setReportPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [reportsData, setReportsData] = useState<any>(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsErr, setReportsErr] = useState<string | null>(null);
 
   // assign modal
   const [assignOpen, setAssignOpen] = useState(false);
@@ -191,7 +201,7 @@ const Dashboard = () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json(); // { items: ProjectCardData[] }
       setJoinedProjects(data.items || []);
-    } catch (e:any) {
+    } catch (e: any) {
       setJoinedErr(e.message || 'Không tải được danh sách dự án đã tham gia');
     } finally {
       setJoinedLoading(false);
@@ -206,7 +216,7 @@ const Dashboard = () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setInvites(data.items || data.invites || []);
-    } catch (e:any) {
+    } catch (e: any) {
       setInvitesErr(e.message || 'Không tải được lời mời');
     } finally {
       setInvitesLoading(false);
@@ -216,7 +226,7 @@ const Dashboard = () => {
   async function acceptInvite(inviteId: string) {
     const res = await fetch(`/api/invites/${inviteId}/accept`, { method: 'POST' });
     if (!res.ok) {
-      const j = await res.json().catch(()=> ({}));
+      const j = await res.json().catch(() => ({}));
       alert(j.error || `Không thể chấp nhận: ${res.status}`);
       return;
     }
@@ -232,7 +242,7 @@ const Dashboard = () => {
   async function declineInvite(inviteId: string) {
     const res = await fetch(`/api/invites/${inviteId}/decline`, { method: 'POST' });
     if (!res.ok) {
-      const j = await res.json().catch(()=> ({}));
+      const j = await res.json().catch(() => ({}));
       alert(j.error || `Không thể từ chối: ${res.status}`);
       return;
     }
@@ -264,6 +274,7 @@ const Dashboard = () => {
       if (taskProject) params.set("projectId", taskProject);
       params.set("page", String(taskPage));
       params.set("pageSize", "20");
+      params.set("filter", "me");
 
       const res = await fetch(`/api/tasks?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -273,6 +284,21 @@ const Dashboard = () => {
       setTasksErr2(e.message || "Không tải được danh sách task");
     } finally {
       setTasksLoading2(false);
+    }
+  }
+
+  async function loadReports() {
+    try {
+      setReportsLoading(true);
+      setReportsErr(null);
+      const res = await fetch(`/api/reports/dashboard?period=${reportPeriod}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setReportsData(data);
+    } catch (e: any) {
+      setReportsErr(e.message || 'Không tải được báo cáo');
+    } finally {
+      setReportsLoading(false);
     }
   }
 
@@ -300,8 +326,11 @@ const Dashboard = () => {
     if (activeTab === 'tasks') {
       loadTasksAgg();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, taskQ, taskStatus, taskProject, taskPage]);
+    if (activeTab === 'reports') {
+      loadReports();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, taskQ, taskStatus, taskProject, taskPage, reportPeriod]);
 
   // ----- HELPERS UI -----
 
@@ -315,10 +344,10 @@ const Dashboard = () => {
     }
   };
 
-  const getPriorityColor = (priority: 'low'|'medium'|'high') =>
+  const getPriorityColor = (priority: 'low' | 'medium' | 'high') =>
     priority === 'low' ? 'text-green-500'
-    : priority === 'medium' ? 'text-yellow-500'
-    : 'text-red-500';
+      : priority === 'medium' ? 'text-yellow-500'
+        : 'text-red-500';
 
   const ProjectCard = ({ project }: { project: ProjectCardData }) => (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-200">
@@ -376,35 +405,63 @@ const Dashboard = () => {
             Chi tiết
           </button>
 
-          {userRole === 'Project Manager' && (
-            <button
-              onClick={() => router.push(`/projects/${project.id}/settings`)}
-              className="cursor-pointer px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm hover:bg-green-200 transition-colors"
-            >
-              Quản lý
-            </button>
+          {activeTab === 'invites' ? (
+            <>
+              <button
+                onClick={() => router.push(`/projects/${project.id}/tasks`)}
+                className="cursor-pointer px-3 py-1 bg-teal-100 text-teal-800 rounded-lg text-sm hover:bg-teal-200 transition-colors"
+              >
+                Xem Task
+              </button>
+              <button
+                onClick={() => router.push(`/projects/${project.id}/comments`)}
+                className="cursor-pointer px-3 py-1 bg-indigo-100 text-indigo-800 rounded-lg text-sm hover:bg-indigo-200 transition-colors"
+              >
+                Bình luận
+              </button>
+              <button
+                onClick={() => router.push(`/projects/${project.id}/progress`)}
+                className="cursor-pointer px-3 py-1 bg-orange-100 text-orange-800 rounded-lg text-sm hover:bg-orange-200 transition-colors"
+              >
+                Tiến độ
+              </button>
+            </>
+          ) : (
+            <>
+              {userRole === 'Project Manager' && (
+                <button
+                  onClick={() => router.push(`/projects/${project.id}/settings`)}
+                  className="cursor-pointer px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm hover:bg-green-200 transition-colors"
+                >
+                  Cài đặt
+                </button>
+              )}
+
+              <button
+                onClick={() => { setSprintProjectId(project.id); setShowSprintModal(true); }}
+                className="cursor-pointer px-3 py-1 bg-indigo-100 text-indigo-800 rounded-lg text-sm hover:bg-indigo-200 transition-colors"
+              >
+                Tạo sprint
+              </button>
+
+              <button
+                onClick={() => seedBacklog(project.id)}
+                className="cursor-pointer px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-sm hover:bg-amber-200 transition-colors"
+              >
+                Seed backlog
+              </button>
+
+              <button
+                onClick={() => {
+                  setInviteProject(project);
+                  setShowInviteModal(true);
+                }}
+                className="cursor-pointer px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"
+              >
+                Mời thành viên
+              </button>
+            </>
           )}
-
-          <button
-            onClick={() => { setSprintProjectId(project.id); setShowSprintModal(true); }}
-            className="cursor-pointer px-3 py-1 bg-indigo-100 text-indigo-800 rounded-lg text-sm hover:bg-indigo-200 transition-colors"
-          >
-            Tạo sprint
-          </button>
-
-          <button
-            onClick={() => seedBacklog(project.id)}
-            className="cursor-pointer px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-sm hover:bg-amber-200 transition-colors"
-          >
-            Seed backlog
-          </button>
-
-          <button
-            onClick={() => handleDeleteProject(project.id)}
-            className="cursor-pointer px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
-          >
-            Xoá
-          </button>
         </div>
       </div>
     </div>
@@ -469,15 +526,7 @@ const Dashboard = () => {
             {/* Actions */}
             <div className="flex items-center space-x-4">
               {/* Bell */}
-              <div className="relative">
-                <button className="p-2 text-gray-400 hover:text-gray-600 relative">
-                  <Bell className="w-6 h-6" />
-                  {notifications.some(n => !n.read) && (
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
-                  )}
-                </button>
-              </div>
-
+              <NotificationBell />
               {/* Tạo dự án */}
               {userRole === 'Project Manager' && (
                 <button
@@ -521,11 +570,10 @@ const Dashboard = () => {
               <div className="space-y-2">
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'dashboard'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'dashboard'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <Home className="w-5 h-5" />
                   <span>Tổng quan</span>
@@ -533,11 +581,10 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => setActiveTab('projects')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'projects'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'projects'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <FolderOpen className="w-5 h-5" />
                   <span>Dự án</span>
@@ -545,11 +592,10 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => setActiveTab('invites')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'invites'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'invites'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <Handshake className="w-5 h-5" />
                   <span>Lời mời</span>
@@ -557,16 +603,16 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => setActiveTab('tasks')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'tasks'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'tasks'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <CheckCircle className="w-5 h-5" />
                   <span>Nhiệm vụ</span>
                 </button>
 
+                {/*
                 <button
                   onClick={() => setActiveTab('kanban')}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
@@ -578,14 +624,14 @@ const Dashboard = () => {
                   <Kanban className="w-5 h-5" />
                   <span>Kanban</span>
                 </button>
+                */}
 
                 <button
                   onClick={() => setActiveTab('calendar')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'calendar'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'calendar'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <CalendarIcon className="w-5 h-5" />
                   <span>Lịch</span>
@@ -593,23 +639,22 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => setActiveTab('team')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'team'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'team'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <Users className="w-5 h-5" />
-                  <span>Nhóm</span>
+                  <span>Tổ chức
+                  </span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('reports')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'reports'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'reports'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <BarChart3 className="w-5 h-5" />
                   <span>Báo cáo</span>
@@ -651,14 +696,14 @@ const Dashboard = () => {
                   )}
                 </section>
 
-                
+
               </div>
             )}
 
             {/* TAB: INVITES */}
             {activeTab === 'invites' && (
               <div className="space-y-10">
-              
+
                 {/* Danh sách dự án tôi đã tham gia (read-only view) */}
                 <section>
                   <div className="flex items-center justify-between mb-6">
@@ -698,7 +743,7 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-4">
-                      {invites.map((iv:any) => (
+                      {invites.map((iv: any) => (
                         <div
                           key={iv.id}
                           className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between"
@@ -780,12 +825,12 @@ const Dashboard = () => {
                     className="border rounded-lg px-3 py-2"
                   >
                     <option value="">Tất cả trạng thái</option>
-                    <option value="TODO">TODO</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                    <option value="REVIEW">REVIEW</option>
-                    <option value="BLOCKED">BLOCKED</option>
-                    <option value="DONE">DONE</option>
-                    <option value="CANCELLED">CANCELLED</option>
+                    <option value="TODO">Cần làm</option>
+                    <option value="IN_PROGRESS">Đang làm</option>
+                    <option value="REVIEW">Đang review</option>
+                    <option value="BLOCKED">Bị chặn</option>
+                    <option value="DONE">Hoàn thành</option>
+                    <option value="CANCELLED">Đã hủy</option>
                   </select>
                 </div>
 
@@ -801,11 +846,10 @@ const Dashboard = () => {
                           <tr className="bg-gray-50 border-b border-gray-200">
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Task</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Dự án</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Cột</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Trạng thái</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Hạn</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Assignees</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Hành động</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Người theo dõi</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Giao việc</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -822,24 +866,24 @@ const Dashboard = () => {
                               </td>
 
                               <td className="px-6 py-3">
-                                {t.column?.name ?? 'Backlog'}
-                              </td>
-
-                              <td className="px-6 py-3">
                                 <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    t.status === 'DONE'
-                                      ? 'bg-green-100 text-green-800'
-                                      : t.status === 'IN_PROGRESS'
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'DONE'
+                                    ? 'bg-green-100 text-green-800'
+                                    : t.status === 'IN_PROGRESS'
                                       ? 'bg-blue-100 text-blue-800'
                                       : t.status === 'REVIEW'
-                                      ? 'bg-purple-100 text-purple-800'
-                                      : t.status === 'BLOCKED'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : t.status === 'BLOCKED'
+                                          ? 'bg-red-100 text-red-800'
+                                          : 'bg-gray-100 text-gray-800'
+                                    }`}
                                 >
-                                  {t.status}
+                                  {t.status === 'TODO' ? 'Cần làm' :
+                                    t.status === 'IN_PROGRESS' ? 'Đang làm' :
+                                      t.status === 'REVIEW' ? 'Đang duyệt' :
+                                        t.status === 'BLOCKED' ? 'Bị chặn' :
+                                          t.status === 'DONE' ? 'Hoàn thành' :
+                                            t.status === 'CANCELLED' ? 'Đã hủy' : t.status}
                                 </span>
                               </td>
 
@@ -848,21 +892,13 @@ const Dashboard = () => {
                               </td>
 
                               <td className="px-6 py-3 text-sm text-gray-700">
-                                {(t.assignees ?? [])
-                                  .map(a => a.user.name || a.user.email)
-                                  .join(', ') || '—'}
+                                {t.follower ? (t.follower.name || t.follower.email) : '—'}
                               </td>
 
                               <td className="px-6 py-3 text-sm text-gray-700">
-                                <button
-                                  className="text-blue-600 hover:underline text-sm"
-                                  onClick={() => {
-                                    setAssignTask({ id: t.id, projectId: t.project.id });
-                                    setAssignOpen(true);
-                                  }}
-                                >
-                                  Giao việc
-                                </button>
+                                {(t.assignees ?? [])
+                                  .map(a => a.user.name || a.user.email)
+                                  .join(', ') || '—'}
                               </td>
                             </tr>
                           ))}
@@ -871,7 +907,7 @@ const Dashboard = () => {
                             <tr>
                               <td
                                 className="px-6 py-10 text-center text-gray-500"
-                                colSpan={7}
+                                colSpan={5}
                               >
                                 Không có task
                               </td>
@@ -908,7 +944,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* TAB: KANBAN */}
+            {/* TAB: KANBAN 
             {activeTab === 'kanban' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
@@ -950,99 +986,13 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
+            */}
 
             {/* TAB: TEAM */}
             {activeTab === 'team' && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h1 className="text-2xl font-bold text-gray-900">Thành viên nhóm</h1>
-                  <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Mời thành viên</span>
-                  </button>
-                </div>
-
-                {teamLoading && <div className="text-gray-500">Đang tải...</div>}
-                {teamErr && <div className="text-red-600">{teamErr}</div>}
-
-                {!teamLoading && !teamErr && teamData && (
-                  <div className="space-y-8">
-                    {/* A) Unique members */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Tổng hợp thành viên</h2>
-                      {teamData.uniqueMembers.length === 0 ? (
-                        <div className="text-gray-600">Chưa có thành viên nào.</div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {teamData.uniqueMembers.map(u => (
-                            <div
-                              key={u.id}
-                              className="flex items-center gap-4 p-3 rounded-lg border border-gray-200"
-                            >
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white flex items-center justify-center font-semibold">
-                                {(u.name?.[0] || u.email[0]).toUpperCase()}
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-gray-900 font-medium">{u.name || u.email}</div>
-                                <div className="text-sm text-gray-500">{u.email}</div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Tham gia: {u.projects.map(p => p.key || '—').join(', ')}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* B) Members by project */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Thành viên theo dự án</h2>
-                      <div className="space-y-6">
-                        {teamData.projects.map(p => (
-                          <div key={p.id} className="border border-gray-200 rounded-lg">
-                            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-900">{p.name}</span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">{p.key}</span>
-                              </div>
-                              <span className="text-sm text-gray-500">{p._count.members} thành viên</span>
-                            </div>
-
-                            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {p.members.map(m => (
-                                <div
-                                  key={m.user.id}
-                                  className="flex items-center gap-3 p-2 rounded-lg border border-gray-200"
-                                >
-                                  <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold">
-                                    {(m.user.name?.[0] || m.user.email[0]).toUpperCase()}
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="text-sm text-gray-900">
-                                      {m.user.name || m.user.email}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {m.user.email}
-                                    </div>
-                                  </div>
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                                    {m.role}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <OrganizationList />
             )}
+
 
             {/* TAB: DASHBOARD */}
             {activeTab === 'dashboard' && (
@@ -1117,13 +1067,12 @@ const Dashboard = () => {
                         className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50"
                       >
                         <div
-                          className={`w-2 h-2 rounded-full ${
-                            activity.type === 'success'
-                              ? 'bg-green-500'
-                              : activity.type === 'comment'
+                          className={`w-2 h-2 rounded-full ${activity.type === 'success'
+                            ? 'bg-green-500'
+                            : activity.type === 'comment'
                               ? 'bg-blue-500'
                               : 'bg-purple-500'
-                          }`}
+                            }`}
                         />
                         <div className="flex-1">
                           <p className="text-gray-900">
@@ -1145,16 +1094,212 @@ const Dashboard = () => {
             {/* TAB: CALENDAR */}
             {activeTab === 'calendar' && (
               <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-4">Lịch</h1>
-                <p className="text-gray-600">Placeholder – sẽ đồng bộ Google Calendar ở bước sau.</p>
+                <div className="flex items-center justify-between mb-6">
+                  <h1 className="text-2xl font-bold text-gray-900">Lịch Biểu</h1>
+                  <div className="flex space-x-2">
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">Hôm nay</button>
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">Tháng trước</button>
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">Tháng sau</button>
+                  </div>
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                  {/* Days Header */}
+                  <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, index) => (
+                      <div key={index} className="px-2 py-3 text-center text-sm font-semibold text-gray-700">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Days Grid */}
+                  <div className="grid grid-cols-7 auto-rows-fr bg-white">
+                    {/* Generates a 35-cell grid for demo purposes */}
+                    {Array.from({ length: 35 }).map((_, i) => {
+                      // Simple logic to mock current month days (start empty, fill 1-30)
+                      const dayNum = i > 2 && i <= 32 ? i - 2 : null;
+                      return (
+                        <div
+                          key={i}
+                          className={`min-h-[120px] border-b border-r border-gray-100 p-2 relative hover:bg-gray-50 transition-colors ${!dayNum ? 'bg-gray-50/50' : ''
+                            }`}
+                        >
+                          {dayNum && (
+                            <span className={`text-sm font-medium inline-flex w-7 h-7 rounded-full items-center justify-center ${dayNum === new Date().getDate() ? 'bg-blue-600 text-white' : 'text-gray-700'
+                              }`}>
+                              {dayNum}
+                            </span>
+                          )}
+
+                          <div className="mt-2 space-y-1">
+                            {/* Mock Events based on random logic for demo */}
+                            {dayNum === 5 && (
+                              <div className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded truncate border border-indigo-200 cursor-pointer hover:bg-indigo-200">
+                                Họp Sprint Planning
+                              </div>
+                            )}
+                            {dayNum === 12 && (
+                              <div className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded truncate border border-red-200 cursor-pointer hover:bg-red-200">
+                                Deadline: UI Design
+                              </div>
+                            )}
+                            {dayNum === 15 && (
+                              <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded truncate border border-green-200 cursor-pointer hover:bg-green-200">
+                                Release v1.0
+                              </div>
+                            )}
+                            {dayNum === 24 && (
+                              <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded truncate border border-yellow-200 cursor-pointer hover:bg-yellow-200">
+                                Review Code
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
             {/* TAB: REPORTS */}
+            {/* TAB: REPORTS */}
             {activeTab === 'reports' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-4">Báo cáo</h1>
-                <p className="text-gray-600">Placeholder – biểu đồ burn-up/burn-down sẽ thêm sau.</p>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center mr-6">
+                  <h1 className="text-2xl font-bold text-gray-900">Báo cáo hiệu suất</h1>
+                  <select
+                    value={reportPeriod}
+                    onChange={(e) => setReportPeriod(e.target.value as any)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="month">Tháng này</option>
+                    <option value="quarter">Quý này</option>
+                    <option value="year">Năm nay</option>
+                  </select>
+                </div>
+
+                {reportsLoading && <div className="text-center py-10">Đang tải báo cáo...</div>}
+
+                {reportsErr && <div className="text-red-500 text-center py-10">{reportsErr}</div>}
+
+                {!reportsLoading && reportsData && (
+                  <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-gray-500 text-sm font-medium">Task Hoàn thành</h3>
+                            <div className="mt-2 flex items-baseline space-x-2">
+                              <span className="text-3xl font-bold text-gray-900">{reportsData.summary.completed.value}</span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${reportsData.summary.completed.growth >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {reportsData.summary.completed.growth >= 0 ? '+' : ''}{reportsData.summary.completed.growth}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="p-3 bg-green-50 rounded-lg">
+                            <CheckCircle className="w-6 h-6 text-green-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-gray-500 text-sm font-medium">Task Quá hạn</h3>
+                            <div className="mt-2 flex items-baseline space-x-2">
+                              <span className="text-3xl font-bold text-gray-900">{reportsData.summary.overdue.value}</span>
+                              {/* Overdue growth logic might differ, for now just show value */}
+                              {/* <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              +1
+                            </span> */}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-red-50 rounded-lg">
+                            <Rocket className="w-6 h-6 text-red-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-gray-500 text-sm font-medium">Thời gian trung bình</h3>
+                            <div className="mt-2 flex items-baseline space-x-2">
+                              <span className="text-3xl font-bold text-gray-900">{reportsData.summary.avgTime.value}h</span>
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Demo
+                              </span>
+                            </div>
+                          </div>
+                          <div className="p-3 bg-blue-50 rounded-lg">
+                            <Clock className="w-6 h-6 text-blue-600" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Charts Area */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Task Status Distribution */}
+                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-bold text-gray-900">Trạng thái công việc</h3>
+                          {/* <button className="text-blue-600 text-sm hover:underline">Chi tiết</button> */}
+                        </div>
+                        <div className="space-y-5">
+                          {reportsData.chartStatus.length === 0 ? <p className="text-gray-500 text-sm">Chưa có dữ liệu</p> :
+                            reportsData.chartStatus.map((item: any) => (
+                              <div key={item.label}>
+                                <div className="flex justify-between text-sm mb-1 font-medium text-gray-700">
+                                  <span>{item.label}</span>
+                                  <div className="flex gap-2">
+                                    <span>{item.count}</span>
+                                    <span className="text-gray-400">({item.pct}%)</span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                  <div
+                                    className={`h-2.5 rounded-full ${item.color} transition-all duration-500`}
+                                    style={{ width: `${item.pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Top Members */}
+                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-bold text-gray-900">Thành viên xuất sắc</h3>
+                          {/* <button className="text-blue-600 text-sm hover:underline">Xem tất cả</button> */}
+                        </div>
+                        <div className="space-y-4">
+                          {reportsData.topMembers.length === 0 ? <p className="text-gray-500 text-sm">Chưa có dữ liệu</p> :
+                            reportsData.topMembers.map((m: any, i: number) => (
+                              <div key={m.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                  {m.name.charAt(0)}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="text-gray-900 font-medium">{m.name}</div>
+                                  <div className="text-xs text-gray-500">{m.role}</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-gray-900 font-bold">{m.tasksCompleted} tasks</div>
+                                  <div className="text-green-600 text-xs font-medium">{m.efficiency}% hiệu suất</div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1194,14 +1339,17 @@ const Dashboard = () => {
 
       <InviteMemberModal
         open={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        onInvited={() => { setShowInviteModal(false); loadTeam(); }}
-        defaultProjectId={teamData?.projects?.[0]?.id}
-        projectOptions={(teamData?.projects ?? []).map(p => ({
-          id: p.id,
-          name: p.name,
-          key: p.key ?? undefined
-        }))}
+        onClose={() => { setShowInviteModal(false); setInviteProject(null); }}
+        onInvited={() => { setShowInviteModal(false); setInviteProject(null); loadTeam(); }}
+        defaultProjectId={inviteProject?.id || teamData?.projects?.[0]?.id}
+        projectOptions={inviteProject
+          ? [{ id: inviteProject.id, name: inviteProject.name, key: inviteProject.key }]
+          : (teamData?.projects ?? []).map(p => ({
+            id: p.id,
+            name: p.name,
+            key: p.key ?? undefined
+          }))
+        }
       />
 
       {/* Quick add task modal (demo local state) */}
