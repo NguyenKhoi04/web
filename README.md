@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dự Án Web Frontend (Next.js)
 
-## Getting Started
+Đây là ứng dụng web được xây dựng dựa trên framework [Next.js](https://nextjs.org), được khởi tạo bằng công cụ [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-First, run the development server:
+Dưới đây là hướng dẫn chi tiết để bạn cài đặt, chạy và phát triển dự án này.
+
+## 1. Hướng dẫn Bắt đầu (Getting Started)
+
+Trước tiên, hãy đảm bảo bạn đã cài đặt môi trường cần thiết (như Node.js). Sau đó, khởi chạy server phát triển (development server) bằng một trong các lệnh sau trong terminal:
 
 ```bash
 npm run dev
-# or
+# hoặc nếu dùng yarn
 yarn dev
-# or
+# hoặc nếu dùng pnpm
 pnpm dev
-# or
+# hoặc nếu dùng bun
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sau khi chạy lệnh, màn hình console sẽ hiển thị địa chỉ localhost (thường là `http://localhost:3000`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Hãy mở trình duyệt web và truy cập vào [http://localhost:3000](http://localhost:3000) để xem ứng dụng đang chạy.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 2. Cấu trúc và Chỉnh sửa
 
-## Learn More
+- **Trang chủ**: Bạn có thể bắt đầu chỉnh sửa giao diện trang chủ bằng cách sửa đổi file `app/page.tsx`.
+- **Tự động cập nhật**: Khi bạn lưu file, trình duyệt sẽ tự động cập nhật nội dung thay đổi mà không cần tải lại trang (tính năng Hot Reload).
+- **Font chữ**: Dự án này sử dụng [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) để tối ưu hóa và tải bộ font [Geist](https://vercel.com/font) của Vercel.
 
-To learn more about Next.js, take a look at the following resources:
+## 3. Tài liệu Tham khảo (Learn More)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Để hiểu rõ hơn về cách hoạt động của Next.js, bạn có thể tham khảo các nguồn tài liệu chính thức sau:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Tài liệu Next.js (Next.js Documentation)](https://nextjs.org/docs): Nơi tra cứu đầy đủ về các tính năng và API của Next.js.
+- [Học Next.js (Learn Next.js)](https://nextjs.org/learn): Khóa học tương tác giúp bạn nắm bắt Next.js từ cơ bản đến nâng cao.
 
-## Deploy on Vercel
+Bạn cũng có thể xem mã nguồn và đóng góp ý kiến tại [GitHub repository của Next.js](https://github.com/vercel/next.js).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 4. Triển khai Ứng dụng (Deploy)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Cách đơn giản và tối ưu nhất để đưa ứng dụng Next.js của bạn lên internet là sử dụng [Nền tảng Vercel](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) (được phát triển bởi chính đội ngũ tạo ra Next.js).
+
+Xem thêm hướng dẫn chi tiết tại [Tài liệu triển khai Next.js](https://nextjs.org/docs/app/building-your-application/deploying).
