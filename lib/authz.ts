@@ -162,3 +162,16 @@ export async function requireProjectRoleOrSystem(
 
   return { user, membershipRole: member.role as ProjectRole, globalRole };
 }
+
+// Hỗ trợ kiểm tra nhiều project cùng lúc, tránh gọi requireProjectRole nhiều lần
+export async function requireProjectRolesForProjects(
+  projectIds: string[],
+  allowed: ProjectRole[] | ProjectRole = ['MANAGER', 'LEAD', 'MEMBER', 'REVIEWER', 'VIEWER']
+) {
+  return Promise.all(projectIds.map(pid => requireProjectRoleOrSystem(pid, allowed)))
+};
+
+// Dành cho các API không cần biết projectId cụ thể, chỉ cần biết user là ai và globalRole gì
+export async function getCurrentUser() {
+  return requireUser();
+}
