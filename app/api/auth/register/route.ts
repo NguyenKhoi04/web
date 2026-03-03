@@ -34,15 +34,31 @@ export async function POST(req: Request) {
     });
 
     // tuỳ chọn: tạo org cá nhân
-    await prisma.organization.create({
-      data: {
-        name: data.company?.trim() || "Personal",
-        slug: (data.company?.trim() || `u-${user.id.slice(0,8)}`)
-                .toLowerCase().replace(/\s+/g, "-").slice(0, 32),
-        members: { create: { userId: user.id, role: "OWNER" } },
-      },
-    });
+    // await prisma.organization.create({
+    //   data: {
+    //     name: data.company?.trim() || "Personal",
+    //     slug: (data.company?.trim() || `u-${user.id.slice(0,8)}`)
+    //             .toLowerCase().replace(/\s+/g, "-").slice(0, 32),
+    //     members: { create: { userId: user.id, role: "OWNER" } },
+    //   },
+    // });
 
+    const isPersonal = !data.company?.trim()
+
+      const slug = isPersonal
+        ? `u-${user.id.slice(0, 8)}`
+        : data.company!.trim()
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .slice(0, 32)
+
+      await prisma.organization.create({
+        data: {
+          name: isPersonal ? "Personal" : data.company!.trim(),
+          slug,
+          members: { create: { userId: user.id, role: "OWNER" } },
+        },
+      })
     // <- LUÔN trả JSON
     return NextResponse.json({ ok: true, userId: user.id }, { status: 201 });
 
