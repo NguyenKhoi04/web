@@ -79,6 +79,7 @@ export default function ProjectCreateModal({ open, onClose, onCreated }: Props) 
                 placeholder="Ví dụ: Website Bán Hàng"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                name="name"
               />
             </div>
 
@@ -89,6 +90,7 @@ export default function ProjectCreateModal({ open, onClose, onCreated }: Props) 
                 placeholder="VD: SHOP, CRM, ITPM"
                 value={key}
                 onChange={(e) => setKey(e.target.value.toUpperCase())}
+                name="key"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Chỉ dùng A–Z, 0–9, dấu gạch ngang. Dùng để đánh số task: <b>{key || "KEY"}-101</b>
@@ -103,6 +105,7 @@ export default function ProjectCreateModal({ open, onClose, onCreated }: Props) 
                 placeholder="Mục tiêu, phạm vi, stakeholder..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                name="description"
               />
             </div>
 
