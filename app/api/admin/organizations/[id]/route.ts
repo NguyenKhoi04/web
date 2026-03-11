@@ -1,11 +1,12 @@
 import { requireAdmin, json } from '@/lib/adminGuard'
 import { prisma } from '@/lib/prisma'
+import { NextRequest } from 'next/server'
 
 export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  context: any
 ) {
-  const { id } = await params
+  const id = context.params.id
 
   const me = await requireAdmin()
   const { status } = await req.json()
