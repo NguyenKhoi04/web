@@ -1,7 +1,17 @@
 // apps/web/app/components/ActivityDrawer.tsx
-'use client';
+"use client";
 import React, { useEffect } from "react";
-import { X, Clock3, FileText, User, MessagesSquare, GitCompare, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
+import {
+  X,
+  Clock3,
+  FileText,
+  User,
+  MessagesSquare,
+  GitCompare,
+  CheckCircle2,
+  AlertCircle,
+  ChevronRight,
+} from "lucide-react";
 
 /**
  * Activity Drawer UI (presentational only)
@@ -24,7 +34,12 @@ export interface ActivityItem {
   id: string;
   type: ActivityType;
   message?: string | null;
-  actor?: { id: string; name?: string | null; email?: string | null; image?: string | null } | null;
+  actor?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
   createdAt: string | Date;
   // optional extras for showing diffs
   meta?: Record<string, unknown> | null;
@@ -61,8 +76,9 @@ export function ActivityDrawer({
 
       {/* Drawer */}
       <aside
-        className={`fixed right-0 top-0 z-[61] h-screen w-full max-w-xl transform bg-white shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"
-          }`}
+        className={`fixed right-0 top-0 z-[61] h-screen w-full max-w-xl transform bg-white shadow-2xl transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
         aria-hidden={!open}
       >
         {/* Header */}
@@ -85,8 +101,14 @@ export function ActivityDrawer({
         {/* Filters (visual only) */}
         <div className="flex items-center gap-2 border-b px-5 py-3">
           <FilterPill label="Tất cả" active />
-          <FilterPill label="Trạng thái" icon={<CheckCircle2 className="h-4 w-4" />} />
-          <FilterPill label="Bình luận" icon={<MessagesSquare className="h-4 w-4" />} />
+          <FilterPill
+            label="Trạng thái"
+            icon={<CheckCircle2 className="h-4 w-4" />}
+          />
+          <FilterPill
+            label="Bình luận"
+            icon={<MessagesSquare className="h-4 w-4" />}
+          />
           <FilterPill label="Tập tin" icon={<FileText className="h-4 w-4" />} />
         </div>
 
@@ -97,10 +119,15 @@ export function ActivityDrawer({
           ) : (
             <ol className="relative ml-3 border-l-2 border-gray-100">
               {items.map((it) => (
-                <li key={it.id} className="group relative -ml-[11px] pl-6 pb-6 last:pb-0">
+                <li
+                  key={it.id}
+                  className="group relative -ml-[11px] pl-6 pb-6 last:pb-0"
+                >
                   {/* node */}
                   <span className="absolute -left-[7px] top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white">
-                    <span className={`h-2.5 w-2.5 rounded-full ${dotColor(it.type)}`} />
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${dotColor(it.type)}`}
+                    />
                   </span>
 
                   <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all group-hover:shadow-md">
@@ -142,13 +169,22 @@ export function ActivityDrawer({
 }
 
 /* --------------------------------- Sub UI -------------------------------- */
-function FilterPill({ label, icon, active }: { label: string; icon?: React.ReactNode; active?: boolean }) {
+function FilterPill({
+  label,
+  icon,
+  active,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  active?: boolean;
+}) {
   return (
     <button
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${active
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+        active
           ? "border-blue-200 bg-blue-50 text-blue-700"
           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-        }`}
+      }`}
       type="button"
     >
       {icon}
@@ -161,8 +197,12 @@ function EmptyState() {
   return (
     <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60">
       <Clock3 className="h-7 w-7 text-gray-400" />
-      <p className="mt-2 text-sm font-medium text-gray-600">Chưa có hoạt động nào</p>
-      <p className="text-xs text-gray-500">Thực hiện cập nhật để xem lịch sử tại đây</p>
+      <p className="mt-2 text-sm font-medium text-gray-600">
+        Chưa có hoạt động nào
+      </p>
+      <p className="text-xs text-gray-500">
+        Thực hiện cập nhật để xem lịch sử tại đây
+      </p>
     </div>
   );
 }
@@ -178,19 +218,48 @@ function ActorBadge({ actor }: { actor?: ActivityItem["actor"] }) {
 
 function TypeBadge({ type }: { type: ActivityType }) {
   const map: Record<ActivityType, { label: string; cls: string }> = {
-    PROJECT_CREATED: { label: "Project created", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-    PROJECT_UPDATED: { label: "Project updated", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    MEMBER_ADDED: { label: "Member added", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-    MEMBER_REMOVED: { label: "Member removed", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-    TASK_CREATED: { label: "Task created", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-    TASK_UPDATED: { label: "Task updated", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-    TASK_STATUS_CHANGED: { label: "Status changed", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    COMMENT_ADDED: { label: "Comment", cls: "bg-purple-50 text-purple-700 border-purple-200" },
-    FILE_ATTACHED: { label: "File attached", cls: "bg-slate-50 text-slate-700 border-slate-200" },
+    PROJECT_CREATED: {
+      label: "Project created",
+      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    },
+    PROJECT_UPDATED: {
+      label: "Project updated",
+      cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    MEMBER_ADDED: {
+      label: "Member added",
+      cls: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    },
+    MEMBER_REMOVED: {
+      label: "Member removed",
+      cls: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    },
+    TASK_CREATED: {
+      label: "Task created",
+      cls: "bg-blue-50 text-blue-700 border-blue-200",
+    },
+    TASK_UPDATED: {
+      label: "Task updated",
+      cls: "bg-blue-50 text-blue-700 border-blue-200",
+    },
+    TASK_STATUS_CHANGED: {
+      label: "Status changed",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+    },
+    COMMENT_ADDED: {
+      label: "Comment",
+      cls: "bg-purple-50 text-purple-700 border-purple-200",
+    },
+    FILE_ATTACHED: {
+      label: "File attached",
+      cls: "bg-slate-50 text-slate-700 border-slate-200",
+    },
   };
   const it = map[type];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${it.cls}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${it.cls}`}
+    >
       {typeIcon(type)} {it.label}
     </span>
   );
@@ -300,19 +369,22 @@ export function ProjectActivityDrawerWithApi({
         setLoading(true);
         setError(null);
 
-        const res = await fetch(`/api/projects/${projectId}/activity?limit=50`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/projects/${projectId}/activity?limit=50`,
+          {
+            cache: "no-store",
+          },
+        );
 
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
 
-        const data = await res.json() as { items?: ProjectActivityApiItem[] } | ProjectActivityApiItem[];
+        const data = (await res.json()) as
+          | { items?: ProjectActivityApiItem[] }
+          | ProjectActivityApiItem[];
 
-        const rawItems = Array.isArray(data)
-          ? data
-          : data.items || [];
+        const rawItems = Array.isArray(data) ? data : data.items || [];
 
         if (cancelled) return;
 
@@ -324,11 +396,11 @@ export function ProjectActivityDrawerWithApi({
           createdAt: a.createdAt,
           actor: a.actor
             ? {
-              id: a.actor.id,
-              name: a.actor.name,
-              email: a.actor.email,
-              image: a.actor.image,
-            }
+                id: a.actor.id,
+                name: a.actor.name,
+                email: a.actor.email,
+                image: a.actor.image,
+              }
             : null,
         }));
 

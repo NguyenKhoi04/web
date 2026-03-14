@@ -1,25 +1,25 @@
 // app/api/kanban/move/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireProjectRole } from '@/lib/authz';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireProjectRole } from "@/lib/authz";
+import { z } from "zod";
 
 const Move = z.object({
   taskId: z.string().cuid(),
-  toColumnId: z.string().cuid().nullable(),   // cho phép null (Backlog/không cột)
-  toOrder: z.number().optional(),             // nếu không gửi sẽ tự sinh
+  toColumnId: z.string().cuid().nullable(), // cho phép null (Backlog/không cột)
+  toOrder: z.number().optional(), // nếu không gửi sẽ tự sinh
 });
 
 // helper: suy ra status từ tên cột (khi cột không có field status)
 function inferStatusFromName(name?: string | null) {
-  const n = (name || '').toLowerCase();
-  if (n.includes('progress')) return 'IN_PROGRESS';
-  if (n.includes('review')) return 'REVIEW';
-  if (n.includes('block')) return 'BLOCKED';
-  if (n.includes('done') || n.includes('complete')) return 'DONE';
-  if (n.includes('cancel')) return 'CANCELLED';
+  const n = (name || "").toLowerCase();
+  if (n.includes("progress")) return "IN_PROGRESS";
+  if (n.includes("review")) return "REVIEW";
+  if (n.includes("block")) return "BLOCKED";
+  if (n.includes("done") || n.includes("complete")) return "DONE";
+  if (n.includes("cancel")) return "CANCELLED";
   // backlog/todo/khác
-  return 'TODO';
+  return "TODO";
 }
 
 export async function POST(req: Request) {
@@ -31,16 +31,20 @@ export async function POST(req: Request) {
       where: { id: taskId },
       select: { id: true, projectId: true, columnId: true, status: true },
     });
-    if (!task) return NextResponse.json({ error: 'Task không tồn tại' }, { status: 404 });
+    if (!task)
+      return NextResponse.json(
+        { error: "Task không tồn tại" },
+        { status: 404 },
+      );
 
-    await requireProjectRole(task.projectId, 'MEMBER');
+    await requireProjectRole(task.projectId, "MEMBER");
 
     // Lấy cột đích (nếu có). Nếu schema có field `status` cho boardColumn thì select nó; không có cũng không sao.
     const toCol = toColumnId
       ? await prisma.boardColumn.findUnique({
-        where: { id: toColumnId },
-        select: { id: true, name: true },
-      })
+          where: { id: toColumnId },
+          select: { id: true, name: true },
+        })
       : null;
 
     // Tính order an toàn cho INT (giây)
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
     // Quy tắc cập nhật status:
     // - Suy ra từ tên cột.
     // - Nếu toColumnId = null => coi như Backlog/TODO.
-    const nextStatus = toColumnId ? inferStatusFromName(toCol?.name) : 'TODO';
+    const nextStatus = toColumnId ? inferStatusFromName(toCol?.name) : "TODO";
 
     const updated = await prisma.task.update({
       where: { id: taskId },
@@ -62,7 +66,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(updated);
   } catch (e: any) {
-    console.error('[POST /api/kanban/move]', e);
+    console.error("[POST /api/kanban/move]", e);
     return NextResponse.json({ error: e.message }, { status: e.status || 500 });
   }
 }

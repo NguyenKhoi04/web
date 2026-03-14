@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  ctx: { params: Promise<{ taskId: string }> }
+  ctx: { params: Promise<{ taskId: string }> },
 ) {
   try {
     const { taskId } = await ctx.params; // <-- PHẢI await
@@ -15,7 +15,7 @@ export async function GET(
     const url = new URL(req.url);
     const limit = Math.min(
       100,
-      Math.max(1, parseInt(url.searchParams.get("limit") || "50", 10))
+      Math.max(1, parseInt(url.searchParams.get("limit") || "50", 10)),
     );
 
     const logs = await prisma.activityLog.findMany({
@@ -36,7 +36,7 @@ export async function GET(
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

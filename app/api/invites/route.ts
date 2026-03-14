@@ -5,9 +5,9 @@ import { requireUser } from "@/lib/authz";
 
 export async function GET(req: Request) {
   try {
-    const me = await requireUser();                       // current user
+    const me = await requireUser(); // current user
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status");            // PENDING | ACCEPTED | DECLINED | null
+    const status = searchParams.get("status"); // PENDING | ACCEPTED | DECLINED | null
 
     const where: any = { recipientId: (me as any).id };
     if (status) where.status = status;
@@ -26,6 +26,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ items });
   } catch (e: any) {
     console.error("[GET /api/invites]", e);
-    return NextResponse.json({ error: e?.message ?? "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

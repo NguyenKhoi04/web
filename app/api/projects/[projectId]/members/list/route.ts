@@ -4,7 +4,7 @@ import { requireProjectRole } from "@/lib/authz";
 
 export async function GET(
   req: Request,
-  ctx: { params: Promise<{ projectId: string }> }
+  ctx: { params: Promise<{ projectId: string }> },
 ) {
   try {
     const { projectId } = await ctx.params;
@@ -20,13 +20,13 @@ export async function GET(
     });
 
     const items = rows
-      .map(r => ({
+      .map((r) => ({
         id: r.user.id,
         name: r.user.name,
         email: r.user.email!,
         role: r.role,
       }))
-      .filter(m => {
+      .filter((m) => {
         if (!q) return true;
         return (
           (m.name ?? "").toLowerCase().includes(q) ||
@@ -36,6 +36,9 @@ export async function GET(
 
     return NextResponse.json({ items });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: e?.status ?? 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "Server error" },
+      { status: e?.status ?? 500 },
+    );
   }
 }

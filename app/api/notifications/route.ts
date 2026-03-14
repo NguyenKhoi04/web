@@ -40,6 +40,9 @@ export async function PATCH(req: Request) {
     });
     return json({ ok: true });
   } catch (e: any) {
-    return json({ error: e?.message ?? "Internal Server Error" }, e?.status ?? 500);
+    return json(
+      { error: e?.message ?? "Internal Server Error" },
+      e?.status ?? 500,
+    );
   }
 }

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // GET: lấy danh sách column; nếu rỗng thì seed cột mặc định
 export async function GET(
   _req: Request,
-  ctx: { params: Promise<{ projectId: string }> }
+  ctx: { params: Promise<{ projectId: string }> },
 ) {
   try {
     const { projectId } = await ctx.params; // <-- PHẢI await
@@ -28,15 +28,15 @@ export async function GET(
       defaults.map((name, i) =>
         prisma.boardColumn.create({
           data: { projectId, name, order: i, isDefault: true },
-        })
-      )
+        }),
+      ),
     );
 
     return NextResponse.json({ items: created });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -44,7 +44,7 @@ export async function GET(
 // POST: tạo column mới
 export async function POST(
   req: Request,
-  ctx: { params: Promise<{ projectId: string }> }
+  ctx: { params: Promise<{ projectId: string }> },
 ) {
   try {
     const { projectId } = await ctx.params; // <-- PHẢI await
@@ -80,7 +80,7 @@ export async function POST(
     // ví dụ P2002 (trùng (projectId, name))
     return NextResponse.json(
       { error: e?.message ?? "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

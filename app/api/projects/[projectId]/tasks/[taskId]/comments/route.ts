@@ -144,7 +144,7 @@ const isLead = ['OWNER','LEAD','MANAGER'].includes(membership.role);
                 content,
                 parentId: parentId ?? null,
                 attachments: {
-                    create: attachments.map((res: any) => ({
+                    create: attachments.map((res: { id: string }) => ({
                         resourceId: res.id,
                         addedById: me.id,
                         taskId, // TaskAttachment also requires taskId

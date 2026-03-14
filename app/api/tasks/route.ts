@@ -6,7 +6,9 @@ import { z } from "zod";
 
 const Query = z.object({
   q: z.string().optional(),
-  status: z.enum(["TODO", "IN_PROGRESS", "REVIEW", "BLOCKED", "DONE", "CANCELLED"]).optional(),
+  status: z
+    .enum(["TODO", "IN_PROGRESS", "REVIEW", "BLOCKED", "DONE", "CANCELLED"])
+    .optional(),
   projectId: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(20),
@@ -27,38 +29,38 @@ export async function GET(req: Request) {
   });
 
   // project mà user đang tham gia
-  const myProjectIds = await prisma.projectMember.findMany({
-    where: { userId: me.id },
-    select: { projectId: true },
-  }).then((r) => r.map(x => x.projectId));
+  const myProjectIds = await prisma.projectMember
+    .findMany({
+      where: { userId: me.id },
+      select: { projectId: true },
+    })
+    .then((r) => r.map((x) => x.projectId));
 
   // nếu có projectId filter, chỉ cho phép trong danh sách của tôi
-  const projectFilter = parsed.projectId && myProjectIds.includes(parsed.projectId)
-    ? parsed.projectId
-    : undefined;
+  const projectFilter =
+    parsed.projectId && myProjectIds.includes(parsed.projectId)
+      ? parsed.projectId
+      : undefined;
 
   const where: any = {
     projectId: projectFilter ? projectFilter : { in: myProjectIds },
     ...(parsed.status ? { status: parsed.status } : {}),
     ...(parsed.q
       ? {
-        OR: [
-          { title: { contains: parsed.q, mode: "insensitive" } },
-          { description: { contains: parsed.q, mode: "insensitive" } },
-        ],
-      }
+          OR: [
+            { title: { contains: parsed.q, mode: "insensitive" } },
+            { description: { contains: parsed.q, mode: "insensitive" } },
+          ],
+        }
       : {}),
   };
 
   // Filter "me": Assignee OR Follower
-  if (parsed.filter === 'me') {
+  if (parsed.filter === "me") {
     where.AND = [
       {
-        OR: [
-          { assignees: { some: { userId: me.id } } },
-          { followerId: me.id },
-        ]
-      }
+        OR: [{ assignees: { some: { userId: me.id } } }, { followerId: me.id }],
+      },
     ];
   }
 
@@ -69,7 +71,7 @@ export async function GET(req: Request) {
       take: parsed.pageSize,
       skip,
       orderBy: [
-        { dueDate: "asc" },          // gần tới hạn trước
+        { dueDate: "asc" }, // gần tới hạn trước
         { createdAt: "desc" },
       ],
       select: {

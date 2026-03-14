@@ -1,9 +1,21 @@
 // app/components/TaskDoneChecklistModal.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 import {
-  CheckCircle2, X, LinkIcon, FilePlus, Timer, StickyNote,
-  BookCheck, ShieldCheck, GitPullRequest, Users, AlertTriangle, Sparkles, Upload, ExternalLink
-} from 'lucide-react';
+  CheckCircle2,
+  X,
+  LinkIcon,
+  FilePlus,
+  Timer,
+  StickyNote,
+  BookCheck,
+  ShieldCheck,
+  GitPullRequest,
+  Users,
+  AlertTriangle,
+  Sparkles,
+  Upload,
+  ExternalLink,
+} from "lucide-react";
 
 type Props = {
   taskId: string;
@@ -12,17 +24,24 @@ type Props = {
   onCompleted?: () => void;
 };
 
-export default function TaskDoneChecklistModal({ taskId, open, onClose, onCompleted }: Props) {
-  const [prUrl, setPrUrl] = useState('');
-  const [artifacts, setArtifacts] = useState<string>('');
-  const [timeMinutes, setTimeMinutes] = useState<string>('');
-  const [note, setNote] = useState('');
+export default function TaskDoneChecklistModal({
+  taskId,
+  open,
+  onClose,
+  onCompleted,
+}: Props) {
+  const [prUrl, setPrUrl] = useState("");
+  const [artifacts, setArtifacts] = useState<string>("");
+  const [timeMinutes, setTimeMinutes] = useState<string>("");
+  const [note, setNote] = useState("");
   const [docsUpdated, setDocsUpdated] = useState(false);
   const [qaPassed, setQaPassed] = useState(false);
   const [depsCleared, setDepsCleared] = useState(false);
-  const [notify, setNotify] = useState<string>('');
+  const [notify, setNotify] = useState<string>("");
 
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; url: string }[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    { name: string; url: string }[]
+  >([]);
   const [isUploading, setIsUploading] = useState(false);
 
   // Handle file upload
@@ -32,15 +51,15 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
     setIsUploading(true);
     const files = Array.from(e.target.files);
     const formData = new FormData();
-    // Defaulting projectId to current context or generic. Since modal is used inside project/kanban, 
-    // we assume we might need projectId for upload if we want to organize folders, 
+    // Defaulting projectId to current context or generic. Since modal is used inside project/kanban,
+    // we assume we might need projectId for upload if we want to organize folders,
     // but the upload API is generic or relies on body 'projectId'.
     // Checking upload API usage: it usually takes a file.
 
     // NOTE: We might not have easy access to `projectId` here if it's not passed as prop.
     // However, the upload API usually works with just a file or requires a project ID.
     // Let's assume we can upload without explicitly needing projectId in the URL if the API supports it,
-    // OR we need to pass projectId to this Modal. 
+    // OR we need to pass projectId to this Modal.
     // Looking at the Component usage, it seems projectId is not passed.
     // Let's try to upload. If it fails due to missing projectId, we might need to add it to props.
     // For now, let's append 'projectId' if we can, or just send file.
@@ -51,16 +70,19 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
     try {
       for (const file of files) {
         const fd = new FormData();
-        fd.append('file', file);
+        fd.append("file", file);
         // Try to get projectId from URL if possible, or omit.
         // Since we are in client component, we can't easily get it without props or params hook.
         // But `upload` route might not strictly require it for storage, only for associating Resource.
         // Let's verify upload/route.ts later. For now, try uploading.
 
-        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
         if (res.ok) {
           const data = await res.json();
-          setUploadedFiles(prev => [...prev, { name: file.name, url: data.url }]);
+          setUploadedFiles((prev) => [
+            ...prev,
+            { name: file.name, url: data.url },
+          ]);
         } else {
           console.error("Upload failed");
         }
@@ -77,14 +99,14 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
 
   useEffect(() => {
     if (!open) {
-      setPrUrl('');
-      setArtifacts('');
-      setTimeMinutes('');
-      setNote('');
+      setPrUrl("");
+      setArtifacts("");
+      setTimeMinutes("");
+      setNote("");
       setDocsUpdated(false);
       setQaPassed(false);
       setDepsCleared(false);
-      setNotify('');
+      setNotify("");
       setUploadedFiles([]);
       setErr(null);
       setSubmitting(false);
@@ -100,15 +122,23 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
   const hasHandover = prUrl.trim().length > 0 || note.trim().length > 0;
 
   const checklist = [
-    { key: 'handover', label: 'Đính kèm PR URL hoặc ghi chú bàn giao', done: hasHandover },
-    { key: 'timelog', label: 'Ghi thời gian thực hiện (phút)', done: timeOk },
-    { key: 'qa', label: 'Đã qua QA/Review', done: qaPassed },
-    { key: 'doc', label: 'Cập nhật tài liệu (README/Wiki)', done: docsUpdated },
-    { key: 'deps', label: 'Gỡ các phụ thuộc/blocker liên quan', done: depsCleared },
+    {
+      key: "handover",
+      label: "Đính kèm PR URL hoặc ghi chú bàn giao",
+      done: hasHandover,
+    },
+    { key: "timelog", label: "Ghi thời gian thực hiện (phút)", done: timeOk },
+    { key: "qa", label: "Đã qua QA/Review", done: qaPassed },
+    { key: "doc", label: "Cập nhật tài liệu (README/Wiki)", done: docsUpdated },
+    {
+      key: "deps",
+      label: "Gỡ các phụ thuộc/blocker liên quan",
+      done: depsCleared,
+    },
   ];
 
   const total = checklist.length;
-  const doneCount = checklist.filter(i => i.done).length;
+  const doneCount = checklist.filter((i) => i.done).length;
   const percent = Math.round((doneCount / total) * 100);
 
   const canSubmit = qaPassed && timeOk && hasHandover && !submitting;
@@ -126,13 +156,16 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
       setErr(null);
 
       const res = await fetch(`/api/tasks/${taskId}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prUrl: prUrl || null,
           artifacts: [
-            ...uploadedFiles.map(f => f.url),
-            ...artifacts.split('\n').map(s => s.trim()).filter(Boolean)
+            ...uploadedFiles.map((f) => f.url),
+            ...artifacts
+              .split("\n")
+              .map((s) => s.trim())
+              .filter(Boolean),
           ],
           timeMinutes: Number(timeMinutes),
           note: note || null,
@@ -141,7 +174,7 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
           depsCleared,
           notify: notify
             .split(/[,\n]/)
-            .map(s => s.trim())
+            .map((s) => s.trim())
             .filter(Boolean),
         }),
       });
@@ -154,7 +187,7 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
       onCompleted?.();
       onClose();
     } catch (e: any) {
-      setErr(e.message || 'Không thể hoàn tất task');
+      setErr(e.message || "Không thể hoàn tất task");
     } finally {
       setSubmitting(false);
       setConfirming(false);
@@ -179,7 +212,9 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 Hoàn tất task
                 <Sparkles className="w-4 h-4 text-yellow-300" />
               </div>
-              <div className="text-white/90 text-sm">Đảm bảo đủ các bước trước khi chuyển sang DONE</div>
+              <div className="text-white/90 text-sm">
+                Đảm bảo đủ các bước trước khi chuyển sang DONE
+              </div>
             </div>
           </div>
 
@@ -202,7 +237,9 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                   <GitPullRequest className="w-4 h-4 text-indigo-600" />
                 </div>
                 Pull Request URL
-                <span className="text-xs text-gray-500 font-normal">(tùy chọn)</span>
+                <span className="text-xs text-gray-500 font-normal">
+                  (tùy chọn)
+                </span>
               </label>
               <div className="relative">
                 <input
@@ -222,7 +259,9 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                   <FilePlus className="w-4 h-4 text-indigo-600" />
                 </div>
                 Artifact / Demo
-                <span className="text-xs text-gray-500 font-normal">(File đính kèm hoặc Link)</span>
+                <span className="text-xs text-gray-500 font-normal">
+                  (File đính kèm hoặc Link)
+                </span>
               </label>
 
               {/* File Upload Area */}
@@ -239,7 +278,7 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                   />
                   <label
                     htmlFor="artifact-upload"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-600 text-sm hover:bg-gray-100 hover:border-indigo-400 cursor-pointer transition-all ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-600 text-sm hover:bg-gray-100 hover:border-indigo-400 cursor-pointer transition-all ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {isUploading ? (
                       <>
@@ -259,13 +298,27 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 {uploadedFiles.length > 0 && (
                   <div className="grid grid-cols-1 gap-2">
                     {uploadedFiles.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded-lg border border-gray-200 bg-white text-sm">
-                        <a href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline truncate">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-2 rounded-lg border border-gray-200 bg-white text-sm"
+                      >
+                        <a
+                          href={f.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 text-blue-600 hover:underline truncate"
+                        >
                           <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate max-w-[200px]">{f.name}</span>
+                          <span className="truncate max-w-[200px]">
+                            {f.name}
+                          </span>
                         </a>
                         <button
-                          onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                          onClick={() =>
+                            setUploadedFiles((prev) =>
+                              prev.filter((_, idx) => idx !== i),
+                            )
+                          }
                           className="p-1 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded transition-colors"
                         >
                           <X className="w-4 h-4" />
@@ -299,12 +352,15 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 <input
                   inputMode="numeric"
                   value={timeMinutes}
-                  onChange={(e) => setTimeMinutes(e.target.value.replace(/[^\d]/g, ''))}
+                  onChange={(e) =>
+                    setTimeMinutes(e.target.value.replace(/[^\d]/g, ""))
+                  }
                   placeholder="VD: 120"
-                  className={`w-full rounded-xl border px-4 py-3 focus:ring-2 transition-all shadow-sm hover:shadow-md ${!timeOk && timeMinutes
-                    ? 'border-red-300 focus:ring-red-500 bg-red-50/50'
-                    : 'border-gray-200 focus:ring-indigo-500 focus:border-transparent'
-                    }`}
+                  className={`w-full rounded-xl border px-4 py-3 focus:ring-2 transition-all shadow-sm hover:shadow-md ${
+                    !timeOk && timeMinutes
+                      ? "border-red-300 focus:ring-red-500 bg-red-50/50"
+                      : "border-gray-200 focus:ring-indigo-500 focus:border-transparent"
+                  }`}
                 />
                 {!timeOk && timeMinutes && (
                   <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
@@ -337,7 +393,9 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                   <Users className="w-4 h-4 text-indigo-600" />
                 </div>
                 Thông báo cho
-                <span className="text-xs text-gray-500 font-normal">(tùy chọn)</span>
+                <span className="text-xs text-gray-500 font-normal">
+                  (tùy chọn)
+                </span>
               </label>
               <input
                 value={notify}
@@ -345,7 +403,9 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 placeholder="@pm@example.com, @qa@example.com"
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm hover:shadow-md"
               />
-              <div className="text-xs text-gray-500 mt-1.5 ml-1">Ngăn cách bởi dấu phẩy hoặc xuống dòng</div>
+              <div className="text-xs text-gray-500 mt-1.5 ml-1">
+                Ngăn cách bởi dấu phẩy hoặc xuống dòng
+              </div>
             </div>
           </div>
 
@@ -359,29 +419,37 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
 
               <div className="space-y-3">
                 {/* Handover */}
-                <label className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${hasHandover
-                  ? 'border-green-200 bg-green-50/50'
-                  : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30'
-                  }`}>
+                <label
+                  className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                    hasHandover
+                      ? "border-green-200 bg-green-50/50"
+                      : "border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30"
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={hasHandover}
                     onChange={() => {
-                      if (!hasHandover) setNote((n) => n || 'Bàn giao qua ghi chú.');
+                      if (!hasHandover)
+                        setNote((n) => n || "Bàn giao qua ghi chú.");
                     }}
                     className="mt-1 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
                   <span className="text-sm text-gray-700 flex-1">
-                    Có <strong>PR URL</strong> hoặc <strong>ghi chú bàn giao</strong>
+                    Có <strong>PR URL</strong> hoặc{" "}
+                    <strong>ghi chú bàn giao</strong>
                     <span className="text-red-500 ml-1">*</span>
                   </span>
                 </label>
 
                 {/* Time */}
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${timeOk
-                  ? 'border-green-200 bg-green-50/50'
-                  : 'border-gray-200 bg-white'
-                  }`}>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                    timeOk
+                      ? "border-green-200 bg-green-50/50"
+                      : "border-gray-200 bg-white"
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={timeOk}
@@ -395,10 +463,13 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 </label>
 
                 {/* QA */}
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${qaPassed
-                  ? 'border-green-200 bg-green-50/50'
-                  : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30'
-                  }`}>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                    qaPassed
+                      ? "border-green-200 bg-green-50/50"
+                      : "border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30"
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={qaPassed}
@@ -412,48 +483,63 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 </label>
 
                 {/* Docs */}
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${docsUpdated
-                  ? 'border-green-200 bg-green-50/50'
-                  : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30'
-                  }`}>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                    docsUpdated
+                      ? "border-green-200 bg-green-50/50"
+                      : "border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30"
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={docsUpdated}
                     onChange={(e) => setDocsUpdated(e.target.checked)}
                     className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
-                  <span className="text-sm text-gray-700 flex-1">Cập nhật tài liệu/Wiki</span>
+                  <span className="text-sm text-gray-700 flex-1">
+                    Cập nhật tài liệu/Wiki
+                  </span>
                 </label>
 
                 {/* Deps */}
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${depsCleared
-                  ? 'border-green-200 bg-green-50/50'
-                  : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30'
-                  }`}>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                    depsCleared
+                      ? "border-green-200 bg-green-50/50"
+                      : "border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30"
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={depsCleared}
                     onChange={(e) => setDepsCleared(e.target.checked)}
                     className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
-                  <span className="text-sm text-gray-700 flex-1">Gỡ các phụ thuộc/blocker</span>
+                  <span className="text-sm text-gray-700 flex-1">
+                    Gỡ các phụ thuộc/blocker
+                  </span>
                 </label>
               </div>
 
               {/* Progress */}
               <div className="mt-6 p-4 rounded-xl bg-white border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-gray-700">Tiến độ hoàn thành</span>
-                  <span className={`text-lg font-bold ${percent === 100 ? 'text-green-600' : 'text-indigo-600'}`}>
+                  <span className="text-sm font-semibold text-gray-700">
+                    Tiến độ hoàn thành
+                  </span>
+                  <span
+                    className={`text-lg font-bold ${percent === 100 ? "text-green-600" : "text-indigo-600"}`}
+                  >
                     {percent}%
                   </span>
                 </div>
                 <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                   <div
-                    className={`h-3 rounded-full transition-all duration-500 ease-out ${percent === 100
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                      : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600'
-                      }`}
+                    className={`h-3 rounded-full transition-all duration-500 ease-out ${
+                      percent === 100
+                        ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                        : "bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600"
+                    }`}
                     style={{ width: `${percent}%` }}
                   />
                 </div>
@@ -479,17 +565,32 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 <button
                   onClick={handleSubmit}
                   disabled={!canSubmit}
-                  className={`rounded-xl px-6 py-2.5 font-semibold text-white transition-all shadow-lg ${canSubmit
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 hover:shadow-xl hover:scale-105 active:scale-100'
-                    : 'bg-gray-300 cursor-not-allowed opacity-60'
-                    }`}
-                  title={!canSubmit ? 'Cần tick đủ mục bắt buộc' : 'Hoàn tất task'}
+                  className={`rounded-xl px-6 py-2.5 font-semibold text-white transition-all shadow-lg ${
+                    canSubmit
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 hover:shadow-xl hover:scale-105 active:scale-100"
+                      : "bg-gray-300 cursor-not-allowed opacity-60"
+                  }`}
+                  title={
+                    !canSubmit ? "Cần tick đủ mục bắt buộc" : "Hoàn tất task"
+                  }
                 >
                   {submitting ? (
                     <span className="flex items-center gap-2">
                       <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
                       </svg>
                       Đang gửi…
                     </span>
@@ -508,8 +609,13 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
       {confirming && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Xác nhận hoàn tất</h3>
-            <p className="text-gray-600 mb-6">Bạn chắc chắn các thông tin đã chính xác và thực hiện yêu cầu hoàn tất?</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Xác nhận hoàn tất
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Bạn chắc chắn các thông tin đã chính xác và thực hiện yêu cầu hoàn
+              tất?
+            </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirming(false)}
@@ -522,7 +628,7 @@ export default function TaskDoneChecklistModal({ taskId, open, onClose, onComple
                 disabled={submitting}
                 className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium disabled:opacity-50"
               >
-                {submitting ? 'Đang xử lý...' : 'Đồng ý'}
+                {submitting ? "Đang xử lý..." : "Đồng ý"}
               </button>
             </div>
           </div>

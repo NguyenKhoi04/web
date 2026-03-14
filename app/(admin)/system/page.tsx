@@ -1,39 +1,44 @@
 // apps/web/app/(admin)/system/page.tsx
-'use client';
-import React, { useEffect, useMemo, useState } from 'react';
-import { signOut, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import UsersPanel from '@/app/components/admin/UsersPanel';
-import { Card, ShieldIcon, Label, ToggleRow, StatusChip, RoleChip, Avatar, Th, Td, SearchIcon } from '@/app/components/admin/SharedUI';
+"use client";
+import React, { useEffect, useMemo, useState } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import UsersPanel from "@/app/components/admin/UsersPanel";
+import {
+  Card,
+  ShieldIcon,
+  Label,
+  ToggleRow,
+  StatusChip,
+  RoleChip,
+  Avatar,
+  Th,
+  Td,
+  SearchIcon,
+} from "@/app/components/admin/SharedUI";
 
 export default function SystemAdminDashboard() {
   const { data, status } = useSession();
   const router = useRouter();
 
   const [tab, setTab] = useState<
-    | 'users'
-    | 'roles'
-    | 'auth'
-    | 'orgs'
-    | 'policies'
-    | 'audit'
-    | 'broadcast'
-  >('users');
+    "users" | "roles" | "auth" | "orgs" | "policies" | "audit" | "broadcast"
+  >("users");
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/sign-in?callbackUrl=/system');
+    if (status === "unauthenticated") {
+      router.replace("/sign-in?callbackUrl=/system");
       return;
     }
-    if (status === 'authenticated') {
+    if (status === "authenticated") {
       const role = (data?.user as any)?.globalRole;
-      const allow = ['SYS_ADMIN']; // hoặc thêm 'SYS_SUPPORT'
-      if (!allow.includes(role)) router.replace('/');
+      const allow = ["SYS_ADMIN"]; // hoặc thêm 'SYS_SUPPORT'
+      if (!allow.includes(role)) router.replace("/");
     }
   }, [status, data, router]);
 
-  if (status === "loading") return <div className="p-6 text-white">Đang tải…</div>;
-
+  if (status === "loading")
+    return <div className="p-6 text-white">Đang tải…</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white">
@@ -60,17 +65,29 @@ export default function SystemAdminDashboard() {
                 <div className="px-4 py-2 rounded-xl bg-green-500/20 border border-green-400/30 backdrop-blur-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                    <span className="text-sm font-semibold text-green-300">System Online</span>
+                    <span className="text-sm font-semibold text-green-300">
+                      System Online
+                    </span>
                   </div>
                 </div>
                 {/* Nút Đăng xuất */}
                 <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={() => signOut({ callbackUrl: "/" })}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all backdrop-blur-sm"
                   title="Đăng xuất và quay lại trang chủ"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3m12 0l-4-4m4 4l-4 4M21 3v18" />
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 12H3m12 0l-4-4m4 4l-4 4M21 3v18"
+                    />
                   </svg>
                   Đăng xuất
                 </button>
@@ -81,37 +98,65 @@ export default function SystemAdminDashboard() {
 
         {/* Tabs với gradient và animation */}
         <div className="mb-8 flex flex-wrap gap-3">
-          <TabButton active={tab === 'users'} onClick={() => setTab('users')} icon="👥">
+          <TabButton
+            active={tab === "users"}
+            onClick={() => setTab("users")}
+            icon="👥"
+          >
             Quản lý người dùng toàn hệ thống
           </TabButton>
-          <TabButton active={tab === 'roles'} onClick={() => setTab('roles')} icon="🎭">
+          <TabButton
+            active={tab === "roles"}
+            onClick={() => setTab("roles")}
+            icon="🎭"
+          >
             Gán hoặc gỡ vai trò hệ thống
           </TabButton>
-          <TabButton active={tab === 'auth'} onClick={() => setTab('auth')} icon="🔐">
+          <TabButton
+            active={tab === "auth"}
+            onClick={() => setTab("auth")}
+            icon="🔐"
+          >
             Cấu hình xác thực cơ bản
           </TabButton>
-          <TabButton active={tab === 'orgs'} onClick={() => setTab('orgs')} icon="🏢">
+          <TabButton
+            active={tab === "orgs"}
+            onClick={() => setTab("orgs")}
+            icon="🏢"
+          >
             Quản lý tổ chức ở mức hệ thống
           </TabButton>
-          <TabButton active={tab === 'policies'} onClick={() => setTab('policies')} icon="⚙️">
+          <TabButton
+            active={tab === "policies"}
+            onClick={() => setTab("policies")}
+            icon="⚙️"
+          >
             Thiết lập chính sách mặc định
           </TabButton>
-          <TabButton active={tab === 'audit'} onClick={() => setTab('audit')} icon="📋">
+          <TabButton
+            active={tab === "audit"}
+            onClick={() => setTab("audit")}
+            icon="📋"
+          >
             Xem Audit log hệ thống
           </TabButton>
-          <TabButton active={tab === 'broadcast'} onClick={() => setTab('broadcast')} icon="📢">
+          <TabButton
+            active={tab === "broadcast"}
+            onClick={() => setTab("broadcast")}
+            icon="📢"
+          >
             Đăng thông báo hệ thống
           </TabButton>
         </div>
 
         {/* Panels */}
-        {tab === 'users' && <UsersPanel />}
-        {tab === 'roles' && <RolesPanel />}
-        {tab === 'auth' && <AuthConfigPanel />}
-        {tab === 'orgs' && <OrganizationsPanel />}
-        {tab === 'policies' && <DefaultPoliciesPanel />}
-        {tab === 'audit' && <AuditLogPanel />}
-        {tab === 'broadcast' && <BroadcastPanel />}
+        {tab === "users" && <UsersPanel />}
+        {tab === "roles" && <RolesPanel />}
+        {tab === "auth" && <AuthConfigPanel />}
+        {tab === "orgs" && <OrganizationsPanel />}
+        {tab === "policies" && <DefaultPoliciesPanel />}
+        {tab === "audit" && <AuditLogPanel />}
+        {tab === "broadcast" && <BroadcastPanel />}
       </div>
     </div>
   );
@@ -124,9 +169,10 @@ function TabButton({ active, onClick, children, icon }: any) {
       onClick={onClick}
       className={`
         relative inline-flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-bold transition-all duration-300 transform hover:scale-105
-        ${active
-          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/50 border-2 border-white/30'
-          : 'bg-white/10 backdrop-blur-sm text-blue-100 hover:bg-white/20 border-2 border-white/10 hover:border-white/20'
+        ${
+          active
+            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/50 border-2 border-white/30"
+            : "bg-white/10 backdrop-blur-sm text-blue-100 hover:bg-white/20 border-2 border-white/10 hover:border-white/20"
         }
       `}
     >
@@ -143,41 +189,51 @@ function TabButton({ active, onClick, children, icon }: any) {
 
 /* ------------------------------ Roles Panel (API) ------------------------------ */
 function RolesPanel() {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'STANDARD' | 'SYS_SUPPORT' | 'SYS_ADMIN'>('STANDARD');
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"STANDARD" | "SYS_SUPPORT" | "SYS_ADMIN">(
+    "STANDARD",
+  );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function assign() {
-    setBusy(true); setMsg(null);
+    setBusy(true);
+    setMsg(null);
     try {
-      const res = await fetch('/api/admin/roles/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await fetch("/api/admin/roles/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, role }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setMsg(`Đã gán vai trò ${role} cho ${email}`);
-      setEmail('');
-    } catch (e: any) { setMsg(e.message || 'Lỗi gán vai trò'); }
-    finally { setBusy(false); }
+      setEmail("");
+    } catch (e: any) {
+      setMsg(e.message || "Lỗi gán vai trò");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function revoke() {
-    setBusy(true); setMsg(null);
+    setBusy(true);
+    setMsg(null);
     try {
-      const res = await fetch('/api/admin/roles/revoke', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await fetch("/api/admin/roles/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setMsg(`Đã gỡ mọi vai trò đặc biệt của ${email}`);
-      setEmail('');
-    } catch (e: any) { setMsg(e.message || 'Lỗi gỡ vai trò'); }
-    finally { setBusy(false); }
+      setEmail("");
+    } catch (e: any) {
+      setMsg(e.message || "Lỗi gỡ vai trò");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -199,9 +255,15 @@ function RolesPanel() {
           onChange={(e) => setRole(e.target.value as any)}
           className="rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-bold cursor-pointer focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all"
         >
-          <option value="STANDARD" className="bg-slate-900">⭐ STANDARD (mặc định)</option>
-          <option value="SYS_SUPPORT" className="bg-slate-900">🛠️ SYS_SUPPORT</option>
-          <option value="SYS_ADMIN" className="bg-slate-900">👑 SYS_ADMIN</option>
+          <option value="STANDARD" className="bg-slate-900">
+            ⭐ STANDARD (mặc định)
+          </option>
+          <option value="SYS_SUPPORT" className="bg-slate-900">
+            🛠️ SYS_SUPPORT
+          </option>
+          <option value="SYS_ADMIN" className="bg-slate-900">
+            👑 SYS_ADMIN
+          </option>
         </select>
         <div className="flex gap-3">
           <button
@@ -235,9 +297,12 @@ function AuthConfigPanel() {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function load() {
-    setLoading(true); setMsg(null);
+    setLoading(true);
+    setMsg(null);
     try {
-      const res = await fetch('/api/admin/auth-config', { credentials: 'include' });
+      const res = await fetch("/api/admin/auth-config", {
+        credentials: "include",
+      });
       if (res.ok) {
         const data = await res.json();
         setEmailPass(!!data.emailPass);
@@ -245,24 +310,32 @@ function AuthConfigPanel() {
         setTwoFA(!!data.twoFA);
         setForcePwdChange(!!data.forcePwdChange);
       }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function save() {
-    setLoading(true); setMsg(null);
+    setLoading(true);
+    setMsg(null);
     try {
-      const res = await fetch('/api/admin/auth-config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await fetch("/api/admin/auth-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ emailPass, oauth, twoFA, forcePwdChange }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setMsg('Đã lưu cấu hình xác thực');
-    } catch (e: any) { setMsg(e.message || 'Lỗi lưu'); }
-    finally { setLoading(false); }
+      setMsg("Đã lưu cấu hình xác thực");
+    } catch (e: any) {
+      setMsg(e.message || "Lỗi lưu");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -314,28 +387,43 @@ function AuthConfigPanel() {
 
 /* ------------------------------ Organizations Panel (API) ------------------------------ */
 function OrganizationsPanel() {
-  type Org = { id: string; name: string; owner: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' };
+  type Org = {
+    id: string;
+    name: string;
+    owner: string;
+    status: "PENDING" | "ACTIVE" | "PAUSED";
+  };
   const [rows, setRows] = useState<Org[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function load() {
-    setLoading(true); setErr(null);
+    setLoading(true);
+    setErr(null);
     try {
-      const res = await fetch('/api/admin/organizations', { credentials: 'include' });
+      const res = await fetch("/api/admin/organizations", {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setRows(await res.json());
-    } catch (e: any) { setErr(e.message || 'Không tải được danh sách tổ chức'); }
-    finally { setLoading(false); }
+    } catch (e: any) {
+      setErr(e.message || "Không tải được danh sách tổ chức");
+    } finally {
+      setLoading(false);
+    }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  async function setStatus(id: string, status: Org['status']) {
+  async function setStatus(id: string, status: Org["status"]) {
     const prev = rows;
-    setRows(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+    setRows((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
     try {
       const res = await fetch(`/api/admin/organizations/${id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -369,21 +457,29 @@ function OrganizationsPanel() {
                 <Td className="font-bold text-white">{o.name}</Td>
                 <Td className="text-blue-200">{o.owner}</Td>
                 <Td>
-                  <StatusChip status={o.status === 'ACTIVE' ? 'ACTIVE' : (o.status === 'PENDING' ? 'INVITED' : 'SUSPENDED')} />
+                  <StatusChip
+                    status={
+                      o.status === "ACTIVE"
+                        ? "ACTIVE"
+                        : o.status === "PENDING"
+                          ? "INVITED"
+                          : "SUSPENDED"
+                    }
+                  />
                 </Td>
                 <Td className="text-right">
                   <div className="inline-flex gap-2">
-                    {o.status !== 'ACTIVE' && (
+                    {o.status !== "ACTIVE" && (
                       <button
-                        onClick={() => setStatus(o.id, 'ACTIVE')}
+                        onClick={() => setStatus(o.id, "ACTIVE")}
                         className="rounded-lg border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition-all"
                       >
                         ✅ Duyệt / Mở
                       </button>
                     )}
-                    {o.status !== 'PAUSED' && (
+                    {o.status !== "PAUSED" && (
                       <button
-                        onClick={() => setStatus(o.id, 'PAUSED')}
+                        onClick={() => setStatus(o.id, "PAUSED")}
                         className="rounded-lg border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition-all"
                       >
                         ⏸️ Tạm ngưng
@@ -402,17 +498,21 @@ function OrganizationsPanel() {
 
 /* ------------------------------ Default Policies Panel (API) ------------------------------ */
 function DefaultPoliciesPanel() {
-  const [defaultOrgRole, setDefaultOrgRole] = useState('MEMBER');
-  const [defaultProjectTemplate, setDefaultProjectTemplate] = useState('KANBAN_BASIC');
+  const [defaultOrgRole, setDefaultOrgRole] = useState("MEMBER");
+  const [defaultProjectTemplate, setDefaultProjectTemplate] =
+    useState("KANBAN_BASIC");
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/admin/default-policies', { credentials: 'include' });
+      const res = await fetch("/api/admin/default-policies", {
+        credentials: "include",
+      });
       if (res.ok) {
         const d = await res.json();
         if (d.defaultOrgRole) setDefaultOrgRole(d.defaultOrgRole);
-        if (d.defaultProjectTemplate) setDefaultProjectTemplate(d.defaultProjectTemplate);
+        if (d.defaultProjectTemplate)
+          setDefaultProjectTemplate(d.defaultProjectTemplate);
       }
     })();
   }, []);
@@ -420,13 +520,17 @@ function DefaultPoliciesPanel() {
   async function save() {
     setMsg(null);
     try {
-      const res = await fetch('/api/admin/default-policies', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ defaultOrgRole, defaultProjectTemplate })
+      const res = await fetch("/api/admin/default-policies", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ defaultOrgRole, defaultProjectTemplate }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setMsg('Đã lưu chính sách mặc định');
-    } catch (e: any) { setMsg(e.message || 'Lỗi lưu'); }
+      setMsg("Đã lưu chính sách mặc định");
+    } catch (e: any) {
+      setMsg(e.message || "Lỗi lưu");
+    }
   }
 
   return (
@@ -438,15 +542,23 @@ function DefaultPoliciesPanel() {
     >
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-3">
-          <Label icon="👤">Role mặc định khi thành viên mới tham gia tổ chức</Label>
+          <Label icon="👤">
+            Role mặc định khi thành viên mới tham gia tổ chức
+          </Label>
           <select
             value={defaultOrgRole}
             onChange={(e) => setDefaultOrgRole(e.target.value)}
             className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-bold cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/50 transition-all"
           >
-            <option value="MEMBER" className="bg-slate-900">👥 MEMBER</option>
-            <option value="ADMIN" className="bg-slate-900">⭐ ADMIN</option>
-            <option value="BILLING" className="bg-slate-900">💳 BILLING</option>
+            <option value="MEMBER" className="bg-slate-900">
+              👥 MEMBER
+            </option>
+            <option value="ADMIN" className="bg-slate-900">
+              ⭐ ADMIN
+            </option>
+            <option value="BILLING" className="bg-slate-900">
+              💳 BILLING
+            </option>
           </select>
         </div>
         <div className="space-y-3">
@@ -456,9 +568,15 @@ function DefaultPoliciesPanel() {
             onChange={(e) => setDefaultProjectTemplate(e.target.value)}
             className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-bold cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/50 transition-all"
           >
-            <option value="KANBAN_BASIC" className="bg-slate-900">📊 Kanban cơ bản</option>
-            <option value="SCRUM_SPRINTS" className="bg-slate-900">🏃 Scrum + Sprints</option>
-            <option value="BUG_TRACKING" className="bg-slate-900">🐛 Bug Tracking</option>
+            <option value="KANBAN_BASIC" className="bg-slate-900">
+              📊 Kanban cơ bản
+            </option>
+            <option value="SCRUM_SPRINTS" className="bg-slate-900">
+              🏃 Scrum + Sprints
+            </option>
+            <option value="BUG_TRACKING" className="bg-slate-900">
+              🐛 Bug Tracking
+            </option>
           </select>
         </div>
       </div>
@@ -477,21 +595,31 @@ function DefaultPoliciesPanel() {
 
 /* ------------------------------ Audit Log Panel (API) ------------------------------ */
 function AuditLogPanel() {
-  type Log = { id: string; ts: string; actor: string; action: string; ip?: string; userAgent?: string; details?: string };
+  type Log = {
+    id: string;
+    ts: string;
+    actor: string;
+    action: string;
+    ip?: string;
+    userAgent?: string;
+    details?: string;
+  };
 
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [q, setQ] = useState('');
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [q, setQ] = useState("");
   const [rows, setRows] = useState<Log[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     const params = new URLSearchParams();
-    if (from) params.set('from', from);
-    if (to) params.set('to', to);
-    if (q) params.set('q', q);
-    const res = await fetch(`/api/admin/audit?${params.toString()}`, { credentials: 'include' });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (q) params.set("q", q);
+    const res = await fetch(`/api/admin/audit?${params.toString()}`, {
+      credentials: "include",
+    });
     if (res.ok) setRows(await res.json());
     setLoading(false);
   }
@@ -519,15 +647,30 @@ function AuditLogPanel() {
       <div className="mb-6 grid gap-4 sm:grid-cols-[1fr_1fr_2fr]">
         <div>
           <Label icon="📅">Từ ngày</Label>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-medium focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50 transition-all" />
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-medium focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50 transition-all"
+          />
         </div>
         <div>
           <Label icon="📅">Đến ngày</Label>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-medium focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50 transition-all" />
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-medium focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50 transition-all"
+          />
         </div>
         <div>
           <Label icon="🔍">Tìm kiếm</Label>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hành động, người thực hiện, chi tiết…" className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/60 font-medium focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50 transition-all" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Hành động, người thực hiện, chi tiết…"
+            className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/60 font-medium focus:border-teal-400 focus:ring-2 focus:ring-teal-400/50 transition-all"
+          />
         </div>
       </div>
 
@@ -548,20 +691,25 @@ function AuditLogPanel() {
             <tbody className="divide-y divide-white/10">
               {filtered.map((l) => (
                 <tr key={l.id} className="hover:bg-white/10 transition-colors">
-                  <Td className="text-blue-200 font-medium">{new Date(l.ts).toLocaleString('vi-VN')}</Td>
+                  <Td className="text-blue-200 font-medium">
+                    {new Date(l.ts).toLocaleString("vi-VN")}
+                  </Td>
                   <Td className="text-white font-bold">{l.actor}</Td>
                   <Td>
-                    <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow
-                        ${l.action === 'LOGIN'
-                        ? 'bg-gradient-to-r from-emerald-500 to-green-600'
-                        : l.action === 'ROLE_ASSIGNED'
-                          ? 'bg-gradient-to-r from-indigo-500 to-purple-600'
-                          : 'bg-gradient-to-r from-sky-500 to-blue-600'
-                      }`}>
+                    <span
+                      className={`inline-block rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow
+                        ${
+                          l.action === "LOGIN"
+                            ? "bg-gradient-to-r from-emerald-500 to-green-600"
+                            : l.action === "ROLE_ASSIGNED"
+                              ? "bg-gradient-to-r from-indigo-500 to-purple-600"
+                              : "bg-gradient-to-r from-sky-500 to-blue-600"
+                        }`}
+                    >
                       {l.action}
                     </span>
                   </Td>
-                  <Td className="text-blue-200">{l.details ?? '—'}</Td>
+                  <Td className="text-blue-200">{l.details ?? "—"}</Td>
                   <Td className="text-blue-200">
                     <div className="flex flex-col">
                       <span className="font-medium">{l.ip}</span>
@@ -580,27 +728,35 @@ function AuditLogPanel() {
 
 /* ------------------------------ Broadcast Panel (API) ------------------------------ */
 function BroadcastPanel() {
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [severity, setSeverity] = useState<'info' | 'warning' | 'danger'>('info');
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [severity, setSeverity] = useState<"info" | "warning" | "danger">(
+    "info",
+  );
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function send() {
     if (!title.trim() || !message.trim()) return;
-    setSending(true); setMsg(null);
+    setSending(true);
+    setMsg(null);
     try {
-      const res = await fetch('/api/admin/broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ title, message, severity }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setMsg('Đã phát thông báo hệ thống!');
-      setTitle(''); setMessage(''); setSeverity('info');
-    } catch (e: any) { setMsg(e.message || 'Lỗi phát thông báo'); }
-    finally { setSending(false); }
+      setMsg("Đã phát thông báo hệ thống!");
+      setTitle("");
+      setMessage("");
+      setSeverity("info");
+    } catch (e: any) {
+      setMsg(e.message || "Lỗi phát thông báo");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -620,7 +776,9 @@ function BroadcastPanel() {
             className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/60 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/40 transition-all"
           />
 
-          <Label icon="✍️" className="mt-4">Nội dung</Label>
+          <Label icon="✍️" className="mt-4">
+            Nội dung
+          </Label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -629,15 +787,23 @@ function BroadcastPanel() {
             className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/60 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/40 transition-all"
           />
 
-          <Label icon="⚠️" className="mt-2">Mức độ</Label>
+          <Label icon="⚠️" className="mt-2">
+            Mức độ
+          </Label>
           <select
             value={severity}
             onChange={(e) => setSeverity(e.target.value as any)}
             className="w-full rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white font-bold cursor-pointer focus:border-rose-400 focus:ring-2 focus:ring-rose-400/40 transition-all"
           >
-            <option value="info" className="bg-slate-900">ℹ️ Thông tin</option>
-            <option value="warning" className="bg-slate-900">🟠 Cảnh báo</option>
-            <option value="danger" className="bg-slate-900">🔴 Khẩn cấp</option>
+            <option value="info" className="bg-slate-900">
+              ℹ️ Thông tin
+            </option>
+            <option value="warning" className="bg-slate-900">
+              🟠 Cảnh báo
+            </option>
+            <option value="danger" className="bg-slate-900">
+              🔴 Khẩn cấp
+            </option>
           </select>
 
           <div className="pt-2 flex items-center gap-3">
@@ -646,7 +812,7 @@ function BroadcastPanel() {
               disabled={sending || !title.trim() || !message.trim()}
               className="rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 px-8 py-3 text-base font-bold text-white disabled:opacity-60 hover:from-pink-600 hover:to-rose-700 shadow-lg shadow-pink-500/30 transition-all"
             >
-              {sending ? 'Đang gửi…' : '📣 Phát thông báo'}
+              {sending ? "Đang gửi…" : "📣 Phát thông báo"}
             </button>
             {msg && <span className="text-sm text-blue-200">{msg}</span>}
           </div>
@@ -657,21 +823,28 @@ function BroadcastPanel() {
           <Label icon="👀">Xem trước</Label>
           <div
             className={`rounded-2xl border-2 p-6 shadow-xl bg-white/5 backdrop-blur-sm
-              ${severity === 'danger'
-                ? 'border-rose-400/40'
-                : severity === 'warning'
-                  ? 'border-amber-400/40'
-                  : 'border-white/20'
+              ${
+                severity === "danger"
+                  ? "border-rose-400/40"
+                  : severity === "warning"
+                    ? "border-amber-400/40"
+                    : "border-white/20"
               }`}
           >
             <div className="flex items-center gap-3 mb-2">
               <span className="text-xl">
-                {severity === 'danger' ? '🔴' : severity === 'warning' ? '🟠' : 'ℹ️'}
+                {severity === "danger"
+                  ? "🔴"
+                  : severity === "warning"
+                    ? "🟠"
+                    : "ℹ️"}
               </span>
-              <h4 className="text-lg font-bold text-white">{title || '(Chưa có tiêu đề)'}</h4>
+              <h4 className="text-lg font-bold text-white">
+                {title || "(Chưa có tiêu đề)"}
+              </h4>
             </div>
             <p className="text-blue-100 whitespace-pre-line">
-              {message || 'Nội dung thông báo sẽ hiển thị ở đây…'}
+              {message || "Nội dung thông báo sẽ hiển thị ở đây…"}
             </p>
           </div>
         </div>
@@ -682,5 +855,5 @@ function BroadcastPanel() {
 
 // Shared UI extracted to @/components/admin/SharedUI
 function routerPush(url: string) {
-  if (typeof window !== 'undefined') window.location.href = url;
+  if (typeof window !== "undefined") window.location.href = url;
 }

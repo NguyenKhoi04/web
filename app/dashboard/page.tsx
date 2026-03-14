@@ -1,30 +1,53 @@
 // app/dashboard/page.tsx
-'use client';
-import React, { useEffect, useState } from 'react';
+"use client";
+import React, { useEffect, useState } from "react";
 import {
-  Plus, Search, Bell, Users, FolderOpen, MessageSquare, Clock,
-  MoreHorizontal, CheckCircle, Kanban, Calendar as CalendarIcon,
-  BarChart3, UserPlus, Flag, Rocket, Home, X, Handshake
-} from 'lucide-react';
+  Plus,
+  Search,
+  Bell,
+  Users,
+  FolderOpen,
+  MessageSquare,
+  Clock,
+  MoreHorizontal,
+  CheckCircle,
+  Kanban,
+  Calendar as CalendarIcon,
+  BarChart3,
+  UserPlus,
+  Flag,
+  Rocket,
+  Home,
+  X,
+  Handshake,
+} from "lucide-react";
 import ProjectCreateModal from "@/app/components/ProjectCreateModal";
 import { useRouter } from "next/navigation";
 import ProjectMore from "@/app/components/ProjectMore";
 import InviteMemberModal from "@/app/components/InviteMemberModal";
 import SprintCreateModal from "@/app/components/SprintCreateModal";
-import AssignTaskModal from '@/app/components/AssignTaskModal';
-import OrganizationList from '@/app/components/OrganizationList';
-import NotificationBell from '@/app/components/NotificationBell';
+import AssignTaskModal from "@/app/components/AssignTaskModal";
+import OrganizationList from "@/app/components/OrganizationList";
+import NotificationBell from "@/app/components/NotificationBell";
 
 /** Types */
-type Priority = 'low' | 'medium' | 'high';
-type Status = 'todo' | 'in-progress' | 'review' | 'done';
+type Priority = "low" | "medium" | "high";
+type Status = "todo" | "in-progress" | "review" | "done";
 
 type TeamProject = {
   id: string;
   name: string;
   key?: string | null;
   _count: { members: number };
-  members: { role: string; user: { id: string; name: string | null; email: string; image?: string | null } }[];
+  members: {
+    role: string;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+      image?: string | null;
+    };
+  }[];
 };
 
 type TeamResponse = {
@@ -88,15 +111,27 @@ const Dashboard = () => {
   const router = useRouter();
 
   // tab hiện tại
-  const [activeTab, setActiveTab] =
-    useState<'dashboard' | 'projects' | 'tasks' | 'kanban' | 'calendar' | 'team' | 'reports' | 'invites'>('projects');
+  const [activeTab, setActiveTab] = useState<
+    | "dashboard"
+    | "projects"
+    | "tasks"
+    | "kanban"
+    | "calendar"
+    | "team"
+    | "reports"
+    | "invites"
+  >("projects");
 
   // role hiển thị badge
-  const [userRole] = useState<'Project Manager' | 'Project Member'>('Project Manager');
+  const [userRole] = useState<"Project Manager" | "Project Member">(
+    "Project Manager",
+  );
 
   // modal states
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteProject, setInviteProject] = useState<ProjectCardData | null>(null);
+  const [inviteProject, setInviteProject] = useState<ProjectCardData | null>(
+    null,
+  );
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [sprintProjectId, setSprintProjectId] = useState<string | null>(null);
@@ -132,48 +167,71 @@ const Dashboard = () => {
   const [taskPage, setTaskPage] = useState(1);
 
   // reports
-  const [reportPeriod, setReportPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [reportPeriod, setReportPeriod] = useState<
+    "month" | "quarter" | "year"
+  >("month");
   const [reportsData, setReportsData] = useState<any>(null);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [reportsErr, setReportsErr] = useState<string | null>(null);
 
   // assign modal
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignTask, setAssignTask] = useState<{ id: string, projectId: string } | null>(null);
+  const [assignTask, setAssignTask] = useState<{
+    id: string;
+    projectId: string;
+  } | null>(null);
 
   // sample kanban mock cards
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: 1,
-      title: 'Thiết kế UI/UX cho trang chủ',
-      description: 'Tạo mockup và prototype cho trang chủ website',
-      status: 'in-progress',
-      priority: 'high',
-      assignee: 'Nguyễn Văn A',
-      deadline: '2025-01-30',
-      tags: ['UI/UX', 'Frontend'],
+      title: "Thiết kế UI/UX cho trang chủ",
+      description: "Tạo mockup và prototype cho trang chủ website",
+      status: "in-progress",
+      priority: "high",
+      assignee: "Nguyễn Văn A",
+      deadline: "2025-01-30",
+      tags: ["UI/UX", "Frontend"],
       comments: 3,
-      attachments: 2
+      attachments: 2,
     },
     {
       id: 2,
-      title: 'Phát triển API authentication',
-      description: 'Xây dựng hệ thống đăng nhập và phân quyền',
-      status: 'todo',
-      priority: 'high',
-      assignee: 'Trần Thị B',
-      deadline: '2025-02-05',
-      tags: ['Backend', 'API'],
+      title: "Phát triển API authentication",
+      description: "Xây dựng hệ thống đăng nhập và phân quyền",
+      status: "todo",
+      priority: "high",
+      assignee: "Trần Thị B",
+      deadline: "2025-02-05",
+      tags: ["Backend", "API"],
       comments: 1,
-      attachments: 0
-    }
+      attachments: 0,
+    },
   ]);
 
   // notifications mock
   const [notifications] = useState([
-    { id: 1, type: 'task', title: 'Nhiệm vụ mới được giao', time: '2 phút trước', read: false },
-    { id: 2, type: 'deadline', title: 'Deadline sắp đến', time: '1 giờ trước', read: false },
-    { id: 3, type: 'comment', title: 'Bình luận mới', time: '3 giờ trước', read: true }
+    {
+      id: 1,
+      type: "task",
+      title: "Nhiệm vụ mới được giao",
+      time: "2 phút trước",
+      read: false,
+    },
+    {
+      id: 2,
+      type: "deadline",
+      title: "Deadline sắp đến",
+      time: "1 giờ trước",
+      read: false,
+    },
+    {
+      id: 3,
+      type: "comment",
+      title: "Bình luận mới",
+      time: "3 giờ trước",
+      read: true,
+    },
   ]);
 
   // ----- LOADERS -----
@@ -182,12 +240,14 @@ const Dashboard = () => {
     try {
       setLoadingProjects(true);
       setErrProjects(null);
-      const res = await fetch('/api/projects?withStats=1&scope=owned', { cache: 'no-store' });
+      const res = await fetch("/api/projects?withStats=1&scope=owned", {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();   // { items: ProjectCardData[] }
+      const data = await res.json(); // { items: ProjectCardData[] }
       setProjects(data.items || []);
     } catch (e: any) {
-      setErrProjects(e.message || 'Không tải được danh sách dự án của tôi');
+      setErrProjects(e.message || "Không tải được danh sách dự án của tôi");
     } finally {
       setLoadingProjects(false);
     }
@@ -197,12 +257,14 @@ const Dashboard = () => {
     try {
       setJoinedLoading(true);
       setJoinedErr(null);
-      const res = await fetch('/api/projects?withStats=1&scope=joined', { cache: 'no-store' });
+      const res = await fetch("/api/projects?withStats=1&scope=joined", {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json(); // { items: ProjectCardData[] }
       setJoinedProjects(data.items || []);
     } catch (e: any) {
-      setJoinedErr(e.message || 'Không tải được danh sách dự án đã tham gia');
+      setJoinedErr(e.message || "Không tải được danh sách dự án đã tham gia");
     } finally {
       setJoinedLoading(false);
     }
@@ -212,19 +274,23 @@ const Dashboard = () => {
     try {
       setInvitesLoading(true);
       setInvitesErr(null);
-      const res = await fetch(`/api/invites?status=PENDING`, { cache: 'no-store' });
+      const res = await fetch(`/api/invites?status=PENDING`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setInvites(data.items || data.invites || []);
     } catch (e: any) {
-      setInvitesErr(e.message || 'Không tải được lời mời');
+      setInvitesErr(e.message || "Không tải được lời mời");
     } finally {
       setInvitesLoading(false);
     }
   }
 
   async function acceptInvite(inviteId: string) {
-    const res = await fetch(`/api/invites/${inviteId}/accept`, { method: 'POST' });
+    const res = await fetch(`/api/invites/${inviteId}/accept`, {
+      method: "POST",
+    });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       alert(j.error || `Không thể chấp nhận: ${res.status}`);
@@ -234,13 +300,15 @@ const Dashboard = () => {
     loadInvites();
     loadProjectsJoined();
     // nếu đang ở tab projects thì reload luôn owned (phòng khi bạn tạo xong và được promote)
-    if (activeTab === 'projects') {
+    if (activeTab === "projects") {
       loadProjectsOwned();
     }
   }
 
   async function declineInvite(inviteId: string) {
-    const res = await fetch(`/api/invites/${inviteId}/decline`, { method: 'POST' });
+    const res = await fetch(`/api/invites/${inviteId}/decline`, {
+      method: "POST",
+    });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       alert(j.error || `Không thể từ chối: ${res.status}`);
@@ -253,12 +321,12 @@ const Dashboard = () => {
     try {
       setTeamLoading(true);
       setTeamErr(null);
-      const res = await fetch('/api/team', { cache: 'no-store' });
+      const res = await fetch("/api/team", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: TeamResponse = await res.json();
       setTeamData(data);
     } catch (e: any) {
-      setTeamErr(e.message || 'Không tải được danh sách thành viên');
+      setTeamErr(e.message || "Không tải được danh sách thành viên");
     } finally {
       setTeamLoading(false);
     }
@@ -276,7 +344,9 @@ const Dashboard = () => {
       params.set("pageSize", "20");
       params.set("filter", "me");
 
-      const res = await fetch(`/api/tasks?${params.toString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/tasks?${params.toString()}`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: TasksResp = await res.json();
       setTasksData(data);
@@ -291,12 +361,14 @@ const Dashboard = () => {
     try {
       setReportsLoading(true);
       setReportsErr(null);
-      const res = await fetch(`/api/reports/dashboard?period=${reportPeriod}`, { cache: 'no-store' });
+      const res = await fetch(`/api/reports/dashboard?period=${reportPeriod}`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setReportsData(data);
     } catch (e: any) {
-      setReportsErr(e.message || 'Không tải được báo cáo');
+      setReportsErr(e.message || "Không tải được báo cáo");
     } finally {
       setReportsLoading(false);
     }
@@ -312,21 +384,21 @@ const Dashboard = () => {
 
   // Khi chuyển tab:
   useEffect(() => {
-    if (activeTab === 'projects') {
+    if (activeTab === "projects") {
       loadProjectsOwned();
       loadProjectsJoined();
     }
-    if (activeTab === 'invites') {
+    if (activeTab === "invites") {
       loadInvites();
       loadProjectsJoined(); // show luôn phần "Dự án tôi đã tham gia" nếu muốn
     }
-    if (activeTab === 'team') {
+    if (activeTab === "team") {
       loadTeam();
     }
-    if (activeTab === 'tasks') {
+    if (activeTab === "tasks") {
       loadTasksAgg();
     }
-    if (activeTab === 'reports') {
+    if (activeTab === "reports") {
       loadReports();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,25 +408,34 @@ const Dashboard = () => {
 
   const getStatusColor = (status: Status) => {
     switch (status) {
-      case 'todo': return 'bg-gray-100 text-gray-800';
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'review': return 'bg-yellow-100 text-yellow-800';
-      case 'done': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "todo":
+        return "bg-gray-100 text-gray-800";
+      case "in-progress":
+        return "bg-blue-100 text-blue-800";
+      case "review":
+        return "bg-yellow-100 text-yellow-800";
+      case "done":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getPriorityColor = (priority: 'low' | 'medium' | 'high') =>
-    priority === 'low' ? 'text-green-500'
-      : priority === 'medium' ? 'text-yellow-500'
-        : 'text-red-500';
+  const getPriorityColor = (priority: "low" | "medium" | "high") =>
+    priority === "low"
+      ? "text-green-500"
+      : priority === "medium"
+        ? "text-yellow-500"
+        : "text-red-500";
 
   const ProjectCard = ({ project }: { project: ProjectCardData }) => (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-200">
       <div className="flex justify-between items-start mb-4 text-gray-900">
         <div>
-          <h3 className="font-bold text-lg text-gray-900 mb-1">{project.name}</h3>
-          <p className="text-gray-600 text-sm">{project.description ?? '—'}</p>
+          <h3 className="font-bold text-lg text-gray-900 mb-1">
+            {project.name}
+          </h3>
+          <p className="text-gray-600 text-sm">{project.description ?? "—"}</p>
         </div>
 
         {/* menu 3 chấm / đổi trạng thái / archive / xóa */}
@@ -387,14 +468,16 @@ const Dashboard = () => {
           <div className="text-sm text-gray-600">Nhiệm vụ</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-gray-900">{project.membersCount}</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {project.membersCount}
+          </div>
           <div className="text-sm text-gray-600">Thành viên</div>
         </div>
       </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
         <span className="text-sm text-gray-600">
-          Tạo: {new Date(project.createdAt).toLocaleDateString('vi-VN')}
+          Tạo: {new Date(project.createdAt).toLocaleDateString("vi-VN")}
         </span>
 
         <div className="flex space-x-2">
@@ -405,7 +488,7 @@ const Dashboard = () => {
             Chi tiết
           </button>
 
-          {activeTab === 'invites' ? (
+          {activeTab === "invites" ? (
             <>
               <button
                 onClick={() => router.push(`/projects/${project.id}/tasks`)}
@@ -428,9 +511,11 @@ const Dashboard = () => {
             </>
           ) : (
             <>
-              {userRole === 'Project Manager' && (
+              {userRole === "Project Manager" && (
                 <button
-                  onClick={() => router.push(`/projects/${project.id}/settings`)}
+                  onClick={() =>
+                    router.push(`/projects/${project.id}/settings`)
+                  }
                   className="cursor-pointer px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm hover:bg-green-200 transition-colors"
                 >
                   Cài đặt
@@ -438,7 +523,10 @@ const Dashboard = () => {
               )}
 
               <button
-                onClick={() => { setSprintProjectId(project.id); setShowSprintModal(true); }}
+                onClick={() => {
+                  setSprintProjectId(project.id);
+                  setShowSprintModal(true);
+                }}
                 className="cursor-pointer px-3 py-1 bg-indigo-100 text-indigo-800 rounded-lg text-sm hover:bg-indigo-200 transition-colors"
               >
                 Tạo sprint
@@ -469,7 +557,9 @@ const Dashboard = () => {
 
   async function seedBacklog(projectId: string) {
     if (!confirm("Seed 8 task mẫu vào Backlog của dự án này?")) return;
-    const res = await fetch(`/api/projects/${projectId}/tasks/seed`, { method: "POST" });
+    const res = await fetch(`/api/projects/${projectId}/tasks/seed`, {
+      method: "POST",
+    });
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({}));
       alert("Seed thất bại: " + (error || res.statusText));
@@ -501,10 +591,12 @@ const Dashboard = () => {
             <div className="flex items-center space-x-4">
               <div
                 className="cursor-pointer flex items-center space-x-2"
-                onClick={() => router.push('/')}
+                onClick={() => router.push("/")}
               >
                 <Rocket className="w-8 h-8 text-blue-600" />
-                <span className="text-2xl font-bold text-gray-900">DVTManagement</span>
+                <span className="text-2xl font-bold text-gray-900">
+                  DVTManagement
+                </span>
               </div>
               <span className="text-sm px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
                 {userRole}
@@ -528,7 +620,7 @@ const Dashboard = () => {
               {/* Bell */}
               <NotificationBell />
               {/* Tạo dự án */}
-              {userRole === 'Project Manager' && (
+              {userRole === "Project Manager" && (
                 <button
                   onClick={() => setShowProjectForm(true)}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2"
@@ -541,11 +633,11 @@ const Dashboard = () => {
               {/* Avatar mini dẫn tới profile */}
               <div
                 className="flex items-center space-x-3 cursor-pointer group"
-                onClick={() => router.push('/profile')}
+                onClick={() => router.push("/profile")}
                 role="button"
                 aria-label="Mở hồ sơ cá nhân"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && router.push('/profile')}
+                onKeyDown={(e) => e.key === "Enter" && router.push("/profile")}
                 title="Hồ sơ cá nhân"
               >
                 <div
@@ -569,44 +661,48 @@ const Dashboard = () => {
             <nav className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <div className="space-y-2">
                 <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'dashboard'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("dashboard")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "dashboard"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <Home className="w-5 h-5" />
                   <span>Tổng quan</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('projects')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'projects'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("projects")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "projects"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <FolderOpen className="w-5 h-5" />
                   <span>Dự án</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('invites')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'invites'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("invites")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "invites"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <Handshake className="w-5 h-5" />
                   <span>Lời mời</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('tasks')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'tasks'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("tasks")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "tasks"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <CheckCircle className="w-5 h-5" />
                   <span>Nhiệm vụ</span>
@@ -627,34 +723,36 @@ const Dashboard = () => {
                 */}
 
                 <button
-                  onClick={() => setActiveTab('calendar')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'calendar'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("calendar")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "calendar"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <CalendarIcon className="w-5 h-5" />
                   <span>Lịch</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('team')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'team'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("team")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "team"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <Users className="w-5 h-5" />
-                  <span>Tổ chức
-                  </span>
+                  <span>Tổ chức</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('reports')}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'reports'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  onClick={() => setActiveTab("reports")}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === "reports"
+                      ? "bg-blue-100 text-blue-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <BarChart3 className="w-5 h-5" />
                   <span>Báo cáo</span>
@@ -666,12 +764,14 @@ const Dashboard = () => {
           {/* Main */}
           <main className="flex-1">
             {/* TAB: PROJECTS */}
-            {activeTab === 'projects' && (
+            {activeTab === "projects" && (
               <div className="space-y-10">
                 {/* Dự án của tôi */}
                 <section>
                   <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Dự án của tôi</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      Dự án của tôi
+                    </h1>
                     <button
                       onClick={() => setShowProjectForm(true)}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -691,23 +791,24 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {projects.map(p => <ProjectCard key={p.id} project={p} />)}
+                      {projects.map((p) => (
+                        <ProjectCard key={p.id} project={p} />
+                      ))}
                     </div>
                   )}
                 </section>
-
-
               </div>
             )}
 
             {/* TAB: INVITES */}
-            {activeTab === 'invites' && (
+            {activeTab === "invites" && (
               <div className="space-y-10">
-
                 {/* Danh sách dự án tôi đã tham gia (read-only view) */}
                 <section>
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">Dự án tôi đã tham gia</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Dự án tôi đã tham gia
+                    </h2>
                     {joinedLoading && (
                       <span className="text-sm text-gray-500">Đang tải…</span>
                     )}
@@ -721,7 +822,7 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {joinedProjects.map(p => (
+                      {joinedProjects.map((p) => (
                         <ProjectCard key={p.id} project={p} />
                       ))}
                     </div>
@@ -730,7 +831,9 @@ const Dashboard = () => {
 
                 <section>
                   <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Lời mời tham gia dự án</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      Lời mời tham gia dự án
+                    </h1>
                   </div>
 
                   {invitesLoading ? (
@@ -750,7 +853,7 @@ const Dashboard = () => {
                         >
                           <div>
                             <div className="font-semibold text-gray-900">
-                              {iv.project?.name || 'Dự án'}
+                              {iv.project?.name || "Dự án"}
                             </div>
                             <div className="text-sm text-gray-600">
                               Vai trò:{" "}
@@ -793,35 +896,46 @@ const Dashboard = () => {
             )}
 
             {/* TAB: TASKS */}
-            {activeTab === 'tasks' && (
+            {activeTab === "tasks" && (
               <div className="text-gray-900">
                 <div className="flex items-center justify-between mb-6">
-                  <h1 className="text-2xl font-bold text-gray-900">Tổng Hợp Nhiệm Vụ</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Tổng Hợp Nhiệm Vụ
+                  </h1>
                 </div>
 
                 {/* Filters */}
                 <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3">
                   <input
                     value={taskQ}
-                    onChange={(e) => { setTaskPage(1); setTaskQ(e.target.value); }}
+                    onChange={(e) => {
+                      setTaskPage(1);
+                      setTaskQ(e.target.value);
+                    }}
                     placeholder="Tìm theo tiêu đề/mô tả…"
                     className="flex-1 min-w-[220px] border rounded-lg px-3 py-2"
                   />
                   <select
                     value={taskProject}
-                    onChange={(e) => { setTaskPage(1); setTaskProject(e.target.value); }}
+                    onChange={(e) => {
+                      setTaskPage(1);
+                      setTaskProject(e.target.value);
+                    }}
                     className="border rounded-lg px-3 py-2"
                   >
                     <option value="">Tất cả dự án</option>
-                    {(tasksData?.projects ?? []).map(p => (
+                    {(tasksData?.projects ?? []).map((p) => (
                       <option key={p.id} value={p.id}>
-                        {(p.key ? `${p.key} — ` : '') + p.name}
+                        {(p.key ? `${p.key} — ` : "") + p.name}
                       </option>
                     ))}
                   </select>
                   <select
                     value={taskStatus}
-                    onChange={(e) => { setTaskPage(1); setTaskStatus(e.target.value); }}
+                    onChange={(e) => {
+                      setTaskPage(1);
+                      setTaskStatus(e.target.value);
+                    }}
                     className="border rounded-lg px-3 py-2"
                   >
                     <option value="">Tất cả trạng thái</option>
@@ -835,7 +949,9 @@ const Dashboard = () => {
                 </div>
 
                 {/* List */}
-                {tasksLoading2 && <div className="text-gray-500">Đang tải...</div>}
+                {tasksLoading2 && (
+                  <div className="text-gray-500">Đang tải...</div>
+                )}
                 {tasksErr2 && <div className="text-red-600">{tasksErr2}</div>}
 
                 {!tasksLoading2 && !tasksErr2 && (
@@ -844,61 +960,88 @@ const Dashboard = () => {
                       <table className="min-w-full">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-200">
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Task</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Dự án</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Trạng thái</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Hạn</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Người theo dõi</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">Giao việc</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
+                              Task
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
+                              Dự án
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
+                              Trạng thái
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
+                              Hạn
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
+                              Người theo dõi
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
+                              Giao việc
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {(tasksData?.items ?? []).map(t => (
+                          {(tasksData?.items ?? []).map((t) => (
                             <tr key={t.id} className="hover:bg-gray-50">
                               <td className="px-6 py-3">
-                                <div className="font-medium text-gray-900">{t.title}</div>
+                                <div className="font-medium text-gray-900">
+                                  {t.title}
+                                </div>
                               </td>
 
                               <td className="px-6 py-3">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                  {t.project.key ? `${t.project.key} — ` : ''}{t.project.name}
+                                  {t.project.key ? `${t.project.key} — ` : ""}
+                                  {t.project.name}
                                 </span>
                               </td>
 
                               <td className="px-6 py-3">
                                 <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'DONE'
-                                    ? 'bg-green-100 text-green-800'
-                                    : t.status === 'IN_PROGRESS'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : t.status === 'REVIEW'
-                                        ? 'bg-purple-100 text-purple-800'
-                                        : t.status === 'BLOCKED'
-                                          ? 'bg-red-100 text-red-800'
-                                          : 'bg-gray-100 text-gray-800'
-                                    }`}
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    t.status === "DONE"
+                                      ? "bg-green-100 text-green-800"
+                                      : t.status === "IN_PROGRESS"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : t.status === "REVIEW"
+                                          ? "bg-purple-100 text-purple-800"
+                                          : t.status === "BLOCKED"
+                                            ? "bg-red-100 text-red-800"
+                                            : "bg-gray-100 text-gray-800"
+                                  }`}
                                 >
-                                  {t.status === 'TODO' ? 'Cần làm' :
-                                    t.status === 'IN_PROGRESS' ? 'Đang làm' :
-                                      t.status === 'REVIEW' ? 'Đang duyệt' :
-                                        t.status === 'BLOCKED' ? 'Bị chặn' :
-                                          t.status === 'DONE' ? 'Hoàn thành' :
-                                            t.status === 'CANCELLED' ? 'Đã hủy' : t.status}
+                                  {t.status === "TODO"
+                                    ? "Cần làm"
+                                    : t.status === "IN_PROGRESS"
+                                      ? "Đang làm"
+                                      : t.status === "REVIEW"
+                                        ? "Đang duyệt"
+                                        : t.status === "BLOCKED"
+                                          ? "Bị chặn"
+                                          : t.status === "DONE"
+                                            ? "Hoàn thành"
+                                            : t.status === "CANCELLED"
+                                              ? "Đã hủy"
+                                              : t.status}
                                 </span>
                               </td>
 
                               <td className="px-6 py-3 text-sm text-gray-700">
-                                {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}
+                                {t.dueDate
+                                  ? new Date(t.dueDate).toLocaleDateString()
+                                  : "—"}
                               </td>
 
                               <td className="px-6 py-3 text-sm text-gray-700">
-                                {t.follower ? (t.follower.name || t.follower.email) : '—'}
+                                {t.follower
+                                  ? t.follower.name || t.follower.email
+                                  : "—"}
                               </td>
 
                               <td className="px-6 py-3 text-sm text-gray-700">
                                 {(t.assignees ?? [])
-                                  .map(a => a.user.name || a.user.email)
-                                  .join(', ') || '—'}
+                                  .map((a) => a.user.name || a.user.email)
+                                  .join(", ") || "—"}
                               </td>
                             </tr>
                           ))}
@@ -919,21 +1062,23 @@ const Dashboard = () => {
 
                     {/* Pagination */}
                     <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
-                      <div>
-                        Tổng: {tasksData?.total ?? 0}
-                      </div>
+                      <div>Tổng: {tasksData?.total ?? 0}</div>
                       <div className="space-x-2">
                         <button
                           className="px-3 py-1 border rounded disabled:opacity-50"
                           disabled={taskPage <= 1}
-                          onClick={() => setTaskPage(p => Math.max(1, p - 1))}
+                          onClick={() => setTaskPage((p) => Math.max(1, p - 1))}
                         >
                           Trước
                         </button>
                         <button
                           className="px-3 py-1 border rounded disabled:opacity-50"
-                          disabled={(tasksData?.page ?? 1) * (tasksData?.pageSize ?? 20) >= (tasksData?.total ?? 0)}
-                          onClick={() => setTaskPage(p => p + 1)}
+                          disabled={
+                            (tasksData?.page ?? 1) *
+                              (tasksData?.pageSize ?? 20) >=
+                            (tasksData?.total ?? 0)
+                          }
+                          onClick={() => setTaskPage((p) => p + 1)}
                         >
                           Sau
                         </button>
@@ -989,17 +1134,18 @@ const Dashboard = () => {
             */}
 
             {/* TAB: TEAM */}
-            {activeTab === 'team' && (
-              <OrganizationList />
-            )}
-
+            {activeTab === "team" && <OrganizationList />}
 
             {/* TAB: DASHBOARD */}
-            {activeTab === 'dashboard' && (
+            {activeTab === "dashboard" && (
               <div>
                 <div className="mb-6">
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">Chào mừng trở lại! 👋</h1>
-                  <p className="text-gray-600">Đây là tổng quan về các dự án và nhiệm vụ của bạn</p>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    Chào mừng trở lại! 👋
+                  </h1>
+                  <p className="text-gray-600">
+                    Đây là tổng quan về các dự án và nhiệm vụ của bạn
+                  </p>
                 </div>
 
                 {/* Stats */}
@@ -1010,7 +1156,9 @@ const Dashboard = () => {
                         <FolderOpen className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{projects.length}</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {projects.length}
+                        </p>
                         <p className="text-gray-600 text-sm">Dự án của tôi</p>
                       </div>
                     </div>
@@ -1022,7 +1170,9 @@ const Dashboard = () => {
                         <CheckCircle className="w-6 h-6 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{tasks.length}</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {tasks.length}
+                        </p>
                         <p className="text-gray-600 text-sm">Nhiệm vụ (demo)</p>
                       </div>
                     </div>
@@ -1035,7 +1185,9 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-2xl font-bold text-gray-900">3</p>
-                        <p className="text-gray-600 text-sm">Thành viên (demo)</p>
+                        <p className="text-gray-600 text-sm">
+                          Thành viên (demo)
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1047,7 +1199,9 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-2xl font-bold text-gray-900">85%</p>
-                        <p className="text-gray-600 text-sm">Tiến độ trung bình</p>
+                        <p className="text-gray-600 text-sm">
+                          Tiến độ trung bình
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1055,31 +1209,51 @@ const Dashboard = () => {
 
                 {/* Recent Activity */}
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Hoạt động gần đây</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Hoạt động gần đây
+                  </h2>
                   <div className="space-y-4">
                     {[
-                      { action: 'Hoàn thành nhiệm vụ', item: 'Thiết kế UI/UX', time: '2 giờ trước', type: 'success' },
-                      { action: 'Thêm bình luận', item: 'API Authentication', time: '4 giờ trước', type: 'comment' },
-                      { action: 'Tạo nhiệm vụ mới', item: 'Database Migration', time: '1 ngày trước', type: 'create' }
+                      {
+                        action: "Hoàn thành nhiệm vụ",
+                        item: "Thiết kế UI/UX",
+                        time: "2 giờ trước",
+                        type: "success",
+                      },
+                      {
+                        action: "Thêm bình luận",
+                        item: "API Authentication",
+                        time: "4 giờ trước",
+                        type: "comment",
+                      },
+                      {
+                        action: "Tạo nhiệm vụ mới",
+                        item: "Database Migration",
+                        time: "1 ngày trước",
+                        type: "create",
+                      },
                     ].map((activity, idx) => (
                       <div
                         key={idx}
                         className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50"
                       >
                         <div
-                          className={`w-2 h-2 rounded-full ${activity.type === 'success'
-                            ? 'bg-green-500'
-                            : activity.type === 'comment'
-                              ? 'bg-blue-500'
-                              : 'bg-purple-500'
-                            }`}
+                          className={`w-2 h-2 rounded-full ${
+                            activity.type === "success"
+                              ? "bg-green-500"
+                              : activity.type === "comment"
+                                ? "bg-blue-500"
+                                : "bg-purple-500"
+                          }`}
                         />
                         <div className="flex-1">
                           <p className="text-gray-900">
-                            {activity.action}:{' '}
+                            {activity.action}:{" "}
                             <span className="font-medium">{activity.item}</span>
                           </p>
-                          <p className="text-xs text-gray-500">{activity.time}</p>
+                          <p className="text-xs text-gray-500">
+                            {activity.time}
+                          </p>
                         </div>
                         <button className="text-gray-400 hover:text-gray-600">
                           <MoreHorizontal className="w-4 h-4" />
@@ -1092,14 +1266,22 @@ const Dashboard = () => {
             )}
 
             {/* TAB: CALENDAR */}
-            {activeTab === 'calendar' && (
+            {activeTab === "calendar" && (
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h1 className="text-2xl font-bold text-gray-900">Lịch Biểu</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Lịch Biểu
+                  </h1>
                   <div className="flex space-x-2">
-                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">Hôm nay</button>
-                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">Tháng trước</button>
-                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">Tháng sau</button>
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">
+                      Hôm nay
+                    </button>
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">
+                      Tháng trước
+                    </button>
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50 bg-white">
+                      Tháng sau
+                    </button>
                   </div>
                 </div>
 
@@ -1107,11 +1289,16 @@ const Dashboard = () => {
                 <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
                   {/* Days Header */}
                   <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, index) => (
-                      <div key={index} className="px-2 py-3 text-center text-sm font-semibold text-gray-700">
-                        {d}
-                      </div>
-                    ))}
+                    {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map(
+                      (d, index) => (
+                        <div
+                          key={index}
+                          className="px-2 py-3 text-center text-sm font-semibold text-gray-700"
+                        >
+                          {d}
+                        </div>
+                      ),
+                    )}
                   </div>
 
                   {/* Days Grid */}
@@ -1123,12 +1310,18 @@ const Dashboard = () => {
                       return (
                         <div
                           key={i}
-                          className={`min-h-[120px] border-b border-r border-gray-100 p-2 relative hover:bg-gray-50 transition-colors ${!dayNum ? 'bg-gray-50/50' : ''
-                            }`}
+                          className={`min-h-[120px] border-b border-r border-gray-100 p-2 relative hover:bg-gray-50 transition-colors ${
+                            !dayNum ? "bg-gray-50/50" : ""
+                          }`}
                         >
                           {dayNum && (
-                            <span className={`text-sm font-medium inline-flex w-7 h-7 rounded-full items-center justify-center ${dayNum === new Date().getDate() ? 'bg-blue-600 text-white' : 'text-gray-700'
-                              }`}>
+                            <span
+                              className={`text-sm font-medium inline-flex w-7 h-7 rounded-full items-center justify-center ${
+                                dayNum === new Date().getDate()
+                                  ? "bg-blue-600 text-white"
+                                  : "text-gray-700"
+                              }`}
+                            >
                               {dayNum}
                             </span>
                           )}
@@ -1166,10 +1359,12 @@ const Dashboard = () => {
 
             {/* TAB: REPORTS */}
             {/* TAB: REPORTS */}
-            {activeTab === 'reports' && (
+            {activeTab === "reports" && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center mr-6">
-                  <h1 className="text-2xl font-bold text-gray-900">Báo cáo hiệu suất</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Báo cáo hiệu suất
+                  </h1>
                   <select
                     value={reportPeriod}
                     onChange={(e) => setReportPeriod(e.target.value as any)}
@@ -1181,9 +1376,15 @@ const Dashboard = () => {
                   </select>
                 </div>
 
-                {reportsLoading && <div className="text-center py-10">Đang tải báo cáo...</div>}
+                {reportsLoading && (
+                  <div className="text-center py-10">Đang tải báo cáo...</div>
+                )}
 
-                {reportsErr && <div className="text-red-500 text-center py-10">{reportsErr}</div>}
+                {reportsErr && (
+                  <div className="text-red-500 text-center py-10">
+                    {reportsErr}
+                  </div>
+                )}
 
                 {!reportsLoading && reportsData && (
                   <>
@@ -1192,11 +1393,20 @@ const Dashboard = () => {
                       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-gray-500 text-sm font-medium">Task Hoàn thành</h3>
+                            <h3 className="text-gray-500 text-sm font-medium">
+                              Task Hoàn thành
+                            </h3>
                             <div className="mt-2 flex items-baseline space-x-2">
-                              <span className="text-3xl font-bold text-gray-900">{reportsData.summary.completed.value}</span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${reportsData.summary.completed.growth >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {reportsData.summary.completed.growth >= 0 ? '+' : ''}{reportsData.summary.completed.growth}%
+                              <span className="text-3xl font-bold text-gray-900">
+                                {reportsData.summary.completed.value}
+                              </span>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${reportsData.summary.completed.growth >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                              >
+                                {reportsData.summary.completed.growth >= 0
+                                  ? "+"
+                                  : ""}
+                                {reportsData.summary.completed.growth}%
                               </span>
                             </div>
                           </div>
@@ -1209,9 +1419,13 @@ const Dashboard = () => {
                       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-gray-500 text-sm font-medium">Task Quá hạn</h3>
+                            <h3 className="text-gray-500 text-sm font-medium">
+                              Task Quá hạn
+                            </h3>
                             <div className="mt-2 flex items-baseline space-x-2">
-                              <span className="text-3xl font-bold text-gray-900">{reportsData.summary.overdue.value}</span>
+                              <span className="text-3xl font-bold text-gray-900">
+                                {reportsData.summary.overdue.value}
+                              </span>
                               {/* Overdue growth logic might differ, for now just show value */}
                               {/* <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               +1
@@ -1227,9 +1441,13 @@ const Dashboard = () => {
                       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-gray-500 text-sm font-medium">Thời gian trung bình</h3>
+                            <h3 className="text-gray-500 text-sm font-medium">
+                              Thời gian trung bình
+                            </h3>
                             <div className="mt-2 flex items-baseline space-x-2">
-                              <span className="text-3xl font-bold text-gray-900">{reportsData.summary.avgTime.value}h</span>
+                              <span className="text-3xl font-bold text-gray-900">
+                                {reportsData.summary.avgTime.value}h
+                              </span>
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 Demo
                               </span>
@@ -1247,18 +1465,26 @@ const Dashboard = () => {
                       {/* Task Status Distribution */}
                       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-lg font-bold text-gray-900">Trạng thái công việc</h3>
+                          <h3 className="text-lg font-bold text-gray-900">
+                            Trạng thái công việc
+                          </h3>
                           {/* <button className="text-blue-600 text-sm hover:underline">Chi tiết</button> */}
                         </div>
                         <div className="space-y-5">
-                          {reportsData.chartStatus.length === 0 ? <p className="text-gray-500 text-sm">Chưa có dữ liệu</p> :
+                          {reportsData.chartStatus.length === 0 ? (
+                            <p className="text-gray-500 text-sm">
+                              Chưa có dữ liệu
+                            </p>
+                          ) : (
                             reportsData.chartStatus.map((item: any) => (
                               <div key={item.label}>
                                 <div className="flex justify-between text-sm mb-1 font-medium text-gray-700">
                                   <span>{item.label}</span>
                                   <div className="flex gap-2">
                                     <span>{item.count}</span>
-                                    <span className="text-gray-400">({item.pct}%)</span>
+                                    <span className="text-gray-400">
+                                      ({item.pct}%)
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -1268,33 +1494,52 @@ const Dashboard = () => {
                                   />
                                 </div>
                               </div>
-                            ))}
+                            ))
+                          )}
                         </div>
                       </div>
 
                       {/* Top Members */}
                       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-lg font-bold text-gray-900">Thành viên xuất sắc</h3>
+                          <h3 className="text-lg font-bold text-gray-900">
+                            Thành viên xuất sắc
+                          </h3>
                           {/* <button className="text-blue-600 text-sm hover:underline">Xem tất cả</button> */}
                         </div>
                         <div className="space-y-4">
-                          {reportsData.topMembers.length === 0 ? <p className="text-gray-500 text-sm">Chưa có dữ liệu</p> :
+                          {reportsData.topMembers.length === 0 ? (
+                            <p className="text-gray-500 text-sm">
+                              Chưa có dữ liệu
+                            </p>
+                          ) : (
                             reportsData.topMembers.map((m: any, i: number) => (
-                              <div key={m.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div
+                                key={m.id}
+                                className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                              >
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
                                   {m.name.charAt(0)}
                                 </div>
                                 <div className="flex-1">
-                                  <div className="text-gray-900 font-medium">{m.name}</div>
-                                  <div className="text-xs text-gray-500">{m.role}</div>
+                                  <div className="text-gray-900 font-medium">
+                                    {m.name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {m.role}
+                                  </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-gray-900 font-bold">{m.tasksCompleted} tasks</div>
-                                  <div className="text-green-600 text-xs font-medium">{m.efficiency}% hiệu suất</div>
+                                  <div className="text-gray-900 font-bold">
+                                    {m.tasksCompleted} tasks
+                                  </div>
+                                  <div className="text-green-600 text-xs font-medium">
+                                    {m.efficiency}% hiệu suất
+                                  </div>
                                 </div>
                               </div>
-                            ))}
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1308,7 +1553,10 @@ const Dashboard = () => {
               <AssignTaskModal
                 open={assignOpen}
                 onClose={() => setAssignOpen(false)}
-                onAssigned={() => { setAssignOpen(false); loadTasksAgg(); }}
+                onAssigned={() => {
+                  setAssignOpen(false);
+                  loadTasksAgg();
+                }}
                 taskId={assignTask.id}
                 projectId={assignTask.projectId}
               />
@@ -1339,16 +1587,30 @@ const Dashboard = () => {
 
       <InviteMemberModal
         open={showInviteModal}
-        onClose={() => { setShowInviteModal(false); setInviteProject(null); }}
-        onInvited={() => { setShowInviteModal(false); setInviteProject(null); loadTeam(); }}
+        onClose={() => {
+          setShowInviteModal(false);
+          setInviteProject(null);
+        }}
+        onInvited={() => {
+          setShowInviteModal(false);
+          setInviteProject(null);
+          loadTeam();
+        }}
         defaultProjectId={inviteProject?.id || teamData?.projects?.[0]?.id}
-        projectOptions={inviteProject
-          ? [{ id: inviteProject.id, name: inviteProject.name, key: inviteProject.key }]
-          : (teamData?.projects ?? []).map(p => ({
-            id: p.id,
-            name: p.name,
-            key: p.key ?? undefined
-          }))
+        projectOptions={
+          inviteProject
+            ? [
+                {
+                  id: inviteProject.id,
+                  name: inviteProject.name,
+                  key: inviteProject.key,
+                },
+              ]
+            : (teamData?.projects ?? []).map((p) => ({
+                id: p.id,
+                name: p.name,
+                key: p.key ?? undefined,
+              }))
         }
       />
 
@@ -1372,17 +1634,22 @@ const Dashboard = () => {
                 const fd = new FormData(e.currentTarget as HTMLFormElement);
                 const t: Task = {
                   id: Date.now(),
-                  title: String(fd.get('title') || ''),
-                  description: String(fd.get('description') || ''),
-                  status: 'todo',
-                  priority: (String(fd.get('priority') || 'medium') as Priority),
-                  assignee: String(fd.get('assignee') || 'Chưa phân công'),
-                  deadline: String(fd.get('deadline') || new Date().toISOString().slice(0, 10)),
-                  tags: (String(fd.get('tags') || '')).split(',').map(s => s.trim()).filter(Boolean),
+                  title: String(fd.get("title") || ""),
+                  description: String(fd.get("description") || ""),
+                  status: "todo",
+                  priority: String(fd.get("priority") || "medium") as Priority,
+                  assignee: String(fd.get("assignee") || "Chưa phân công"),
+                  deadline: String(
+                    fd.get("deadline") || new Date().toISOString().slice(0, 10),
+                  ),
+                  tags: String(fd.get("tags") || "")
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
                   comments: 0,
                   attachments: 0,
                 };
-                setTasks(prev => [t, ...prev]);
+                setTasks((prev) => [t, ...prev]);
                 setShowTaskForm(false);
               }}
               className="space-y-3"
@@ -1413,12 +1680,11 @@ const Dashboard = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <select
-                  name="priority"
-                  className="border rounded-lg px-3 py-2"
-                >
+                <select name="priority" className="border rounded-lg px-3 py-2">
                   <option value="low">Ưu tiên thấp</option>
-                  <option value="medium" defaultValue="medium">Ưu tiên vừa</option>
+                  <option value="medium" defaultValue="medium">
+                    Ưu tiên vừa
+                  </option>
                   <option value="high">Ưu tiên cao</option>
                 </select>
 

@@ -28,7 +28,9 @@ export async function GET(req: Request, context: any) {
 
     const items = milestones.map((m: any) => {
       const totalTasks = m.tasks.length;
-      const completedTasks = m.tasks.filter((t: any) => t.status === "DONE").length;
+      const completedTasks = m.tasks.filter(
+        (t: any) => t.status === "DONE",
+      ).length;
 
       const progress =
         totalTasks > 0

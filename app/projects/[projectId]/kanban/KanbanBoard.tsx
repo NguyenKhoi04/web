@@ -1,4 +1,4 @@
-// app/projects/[projectId]/kanban/KanbanBoard.tsx 
+// app/projects/[projectId]/kanban/KanbanBoard.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -13,12 +13,12 @@ type Column = {
 
 // Fixed columns based on TaskStatus enum
 const STATUS_COLUMNS: Column[] = [
-  { id: 'TODO', name: 'Cần làm', color: 'from-gray-500 to-gray-600' },
-  { id: 'IN_PROGRESS', name: 'Đang làm', color: 'from-blue-500 to-blue-600' },
-  { id: 'REVIEW', name: 'Đang duyệt', color: 'from-purple-500 to-purple-600' },
-  { id: 'BLOCKED', name: 'Bị chặn', color: 'from-red-500 to-red-600' },
-  { id: 'DONE', name: 'Hoàn thành', color: 'from-green-500 to-green-600' },
-  { id: 'CANCELLED', name: 'Đã hủy', color: 'from-zinc-500 to-zinc-600' },
+  { id: "TODO", name: "Cần làm", color: "from-gray-500 to-gray-600" },
+  { id: "IN_PROGRESS", name: "Đang làm", color: "from-blue-500 to-blue-600" },
+  { id: "REVIEW", name: "Đang duyệt", color: "from-purple-500 to-purple-600" },
+  { id: "BLOCKED", name: "Bị chặn", color: "from-red-500 to-red-600" },
+  { id: "DONE", name: "Hoàn thành", color: "from-green-500 to-green-600" },
+  { id: "CANCELLED", name: "Đã hủy", color: "from-zinc-500 to-zinc-600" },
 ];
 
 type Task = {
@@ -32,7 +32,6 @@ type Task = {
   assignees?: { user: { id: string; name: string | null; email: string } }[];
 };
 
-
 export default function KanbanBoard({ projectId }: { projectId: string }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -43,14 +42,14 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
     // ưu tiên mảng assignees nếu có
     if (t.assignees && t.assignees.length > 0) {
       return t.assignees
-        .map(a => a.user.name || a.user.email)
+        .map((a) => a.user.name || a.user.email)
         .filter(Boolean)
-        .join(', ');
+        .join(", ");
     }
     // fallback: assignee (string đơn)
     if (t.assignee && t.assignee.trim()) return t.assignee;
     // không có gì → chưa phân công
-    return 'Chưa phân công';
+    return "Chưa phân công";
   }
 
   async function fetchBoardData() {
@@ -58,19 +57,22 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
     setErrMsg(null);
     try {
       // Fetch tasks only, view=board might return columns too but we ignore them
-      const res = await fetch(
-        `/api/projects/${projectId}/tasks?view=board`,
-        {
-          cache: "no-store",
-          credentials: "include",
-        }
-      );
+      const res = await fetch(`/api/projects/${projectId}/tasks?view=board`, {
+        cache: "no-store",
+        credentials: "include",
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
       }
       const data = await res.json();
-      setTasks(Array.isArray(data?.tasks) ? data.tasks : (Array.isArray(data?.items) ? data.items : []));
+      setTasks(
+        Array.isArray(data?.tasks)
+          ? data.tasks
+          : Array.isArray(data?.items)
+            ? data.items
+            : [],
+      );
     } catch (e: any) {
       console.error("[Kanban fetch error]", e);
       setErrMsg(e?.message || "Lỗi khi tải dữ liệu Kanban");
@@ -101,9 +103,9 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
 
     // Optimistic update
     const prevTasks = [...tasks];
-    setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, status: newStatus } : t
-    ));
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+    );
     setDraggedTask(null);
 
     try {
@@ -143,8 +145,9 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
     };
     return (
       <span
-        className={`px-2 py-0.5 rounded-full border text-xs font-medium inline-flex items-center gap-1 ${map[label]
-          }`}
+        className={`px-2 py-0.5 rounded-full border text-xs font-medium inline-flex items-center gap-1 ${
+          map[label]
+        }`}
       >
         <span>{iconMap[label]}</span>
         {label}
@@ -183,20 +186,19 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
         style={{ minWidth: `${STATUS_COLUMNS.length * 320}px` }}
       >
         {STATUS_COLUMNS.map((col) => {
-          const colTasks = tasks.filter(t => t.status === col.id);
+          const colTasks = tasks.filter((t) => t.status === col.id);
 
           return (
             <div
               key={col.id}
-              className={`w-80 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col transition-all duration-200 ${draggedTask ? "hover:shadow-lg hover:scale-[1.01]" : ""
-                }`}
+              className={`w-80 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col transition-all duration-200 ${
+                draggedTask ? "hover:shadow-lg hover:scale-[1.01]" : ""
+              }`}
               onDrop={(e) => handleDrop(e, col.id)}
               onDragOver={(e) => e.preventDefault()}
             >
               {/* Header cột */}
-              <div
-                className={`p-4 rounded-t-xl bg-gradient-to-r ${col.color}`}
-              >
+              <div className={`p-4 rounded-t-xl bg-gradient-to-r ${col.color}`}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-white font-semibold">{col.name}</h2>
                   <span className="text-white/90 text-sm px-2 py-0.5 rounded-full bg-white/20">
@@ -213,10 +215,11 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
                     draggable
                     onDragStart={(e) => handleDragStart(e, task.id)}
                     onDragEnd={handleDragEnd}
-                    className={`bg-white border border-gray-200 rounded-lg p-3 shadow-sm cursor-move transition-all ${draggedTask === task.id
-                      ? "opacity-60 scale-[0.98]"
-                      : "hover:shadow-md"
-                      }`}
+                    className={`bg-white border border-gray-200 rounded-lg p-3 shadow-sm cursor-move transition-all ${
+                      draggedTask === task.id
+                        ? "opacity-60 scale-[0.98]"
+                        : "hover:shadow-md"
+                    }`}
                   >
                     <div className="font-medium text-gray-900 mb-1">
                       {task.title}
@@ -227,7 +230,10 @@ export default function KanbanBoard({ projectId }: { projectId: string }) {
                       </div>
                     )}
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-500 max-w-[120px] truncate" title={getAssigneeLabel(task)}>
+                      <div
+                        className="text-xs text-gray-500 max-w-[120px] truncate"
+                        title={getAssigneeLabel(task)}
+                      >
                         👤 {getAssigneeLabel(task)}
                       </div>
                       {getPriorityBadge(task.priority)}

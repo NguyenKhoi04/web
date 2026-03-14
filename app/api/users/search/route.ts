@@ -7,7 +7,7 @@ export async function GET(req: Request) {
     const user = await requireUser(); // Ensure user is authenticated
 
     const { searchParams } = new URL(req.url);
-    const query = (searchParams.get('q') ?? '').trim();
+    const query = (searchParams.get("q") ?? "").trim();
 
     if (!query) {
       return NextResponse.json({ items: [] });
@@ -15,15 +15,12 @@ export async function GET(req: Request) {
 
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { email: { contains: query } },
-          { name: { contains: query } },
-        ],
+        OR: [{ email: { contains: query } }, { name: { contains: query } }],
         // Optionally exclude the current user to avoid self-invites in some contexts,
         // but for now, we leave it flexible.
         NOT: {
-          id: user.id
-        }
+          id: user.id,
+        },
       },
       select: {
         id: true,
@@ -36,6 +33,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items: users });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Failed to search users" }, { status: 500 });
+    return NextResponse.json(
+      { error: e.message || "Failed to search users" },
+      { status: 500 },
+    );
   }
 }

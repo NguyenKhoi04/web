@@ -1,12 +1,19 @@
 // app/components/CreateTaskModal.tsx
-'use client';
-import React, { useMemo, useRef, useState } from 'react';
+"use client";
+import React, { useMemo, useRef, useState } from "react";
 
-type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+type Priority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 type Member = { id: string; name: string | null; email: string };
 
 type ChecklistItem = { id: string; title: string; done: boolean };
-type AttachmentDraft = { id: string; file: File; name: string; size: number; mime: string; preview?: string };
+type AttachmentDraft = {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  mime: string;
+  preview?: string;
+};
 
 type Props = {
   projectId: string;
@@ -17,21 +24,27 @@ type Props = {
   onCreated?: (taskId: string) => void;
 };
 
-export default function CreateTaskModal({ projectId, members, open, onClose, onCreated }: Props) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [acceptance, setAcceptance] = useState('');
-  const [priority, setPriority] = useState<Priority>('MEDIUM');
-  const [dueDate, setDueDate] = useState('');      // 'YYYY-MM-DD'
-  const [estimateH, setEstimateH] = useState<string>(''); // string để kiểm soát input
+export default function CreateTaskModal({
+  projectId,
+  members,
+  open,
+  onClose,
+  onCreated,
+}: Props) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [acceptance, setAcceptance] = useState("");
+  const [priority, setPriority] = useState<Priority>("MEDIUM");
+  const [dueDate, setDueDate] = useState(""); // 'YYYY-MM-DD'
+  const [estimateH, setEstimateH] = useState<string>(""); // string để kiểm soát input
   const [labels, setLabels] = useState<string[]>([]);
-  const [labelInput, setLabelInput] = useState('');
+  const [labelInput, setLabelInput] = useState("");
 
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [watcherIds, setWatcherIds] = useState<string[]>([]);
 
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
-  const [checkInput, setCheckInput] = useState('');
+  const [checkInput, setCheckInput] = useState("");
 
   const [files, setFiles] = useState<AttachmentDraft[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,64 +55,69 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
   const isValid = useMemo(() => title.trim().length > 0, [title]);
 
   function toggleInArray(setter: (v: any) => void, arr: string[], id: string) {
-    if (arr.includes(id)) setter(arr.filter(x => x !== id));
+    if (arr.includes(id)) setter(arr.filter((x) => x !== id));
     else setter([...arr, id]);
   }
 
   function addChecklistItem() {
     const t = checkInput.trim();
     if (!t) return;
-    setChecklist(prev => [...prev, { id: crypto.randomUUID(), title: t, done: false }]);
-    setCheckInput('');
+    setChecklist((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), title: t, done: false },
+    ]);
+    setCheckInput("");
   }
   function updateChecklistItem(id: string, patch: Partial<ChecklistItem>) {
-    setChecklist(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
+    setChecklist((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+    );
   }
   function removeChecklistItem(id: string) {
-    setChecklist(prev => prev.filter(i => i.id !== id));
+    setChecklist((prev) => prev.filter((i) => i.id !== id));
   }
 
   function addLabel() {
     const t = labelInput.trim();
     if (!t || labels.includes(t)) return;
-    setLabels(prev => [...prev, t]);
-    setLabelInput('');
+    setLabels((prev) => [...prev, t]);
+    setLabelInput("");
   }
   function removeLabel(t: string) {
-    setLabels(prev => prev.filter(x => x !== t));
+    setLabels((prev) => prev.filter((x) => x !== t));
   }
 
   function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const fl = Array.from(e.target.files || []);
     if (!fl.length) return;
-    const drafts: AttachmentDraft[] = fl.map(f => ({
+    const drafts: AttachmentDraft[] = fl.map((f) => ({
       id: crypto.randomUUID(),
       file: f,
       name: f.name,
       size: f.size,
       mime: f.type,
-      preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined,
+      preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
     }));
-    setFiles(prev => [...prev, ...drafts]);
+    setFiles((prev) => [...prev, ...drafts]);
     // reset input để chọn lại cùng file
-    e.target.value = '';
+    e.target.value = "";
   }
   function removeFile(id: string) {
-    setFiles(prev => prev.filter(f => f.id !== id));
+    setFiles((prev) => prev.filter((f) => f.id !== id));
   }
 
   async function uploadFile(file: File): Promise<string> {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('projectId', projectId);
+    formData.append("file", file);
+    formData.append("projectId", projectId);
 
-    const res = await fetch('/api/upload', {
-      method: 'POST',
+    const res = await fetch("/api/upload", {
+      method: "POST",
       body: formData,
     });
 
     if (!res.ok) {
-      throw new Error('Upload failed');
+      throw new Error("Upload failed");
     }
 
     const data = await res.json();
@@ -118,7 +136,7 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
           const id = await uploadFile(f.file);
           attachmentIds.push(id);
         } catch (e) {
-          console.error('Upload error', e);
+          console.error("Upload error", e);
           // Continue or throw? Let's continue but warn?
         }
       }
@@ -134,33 +152,40 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
         labels,
         assigneeIds,
         watcherIds, // Array of 1 ID
-        checklist: checklist.map(c => ({ title: c.title })),
+        checklist: checklist.map((c) => ({ title: c.title })),
         attachmentIds,
       };
 
       const res = await fetch(`/api/projects/${projectId}/tasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const t = await res.text().catch(() => '');
+        const t = await res.text().catch(() => "");
         throw new Error(`Tạo task thất bại (HTTP ${res.status}) ${t}`);
       }
       const task = await res.json();
 
       onCreated?.(task.id);
       // reset form
-      setTitle(''); setDescription(''); setAcceptance('');
-      setPriority('MEDIUM'); setDueDate(''); setEstimateH('');
-      setLabels([]); setLabelInput('');
-      setAssigneeIds([]); setWatcherIds([]);
-      setChecklist([]); setCheckInput('');
+      setTitle("");
+      setDescription("");
+      setAcceptance("");
+      setPriority("MEDIUM");
+      setDueDate("");
+      setEstimateH("");
+      setLabels([]);
+      setLabelInput("");
+      setAssigneeIds([]);
+      setWatcherIds([]);
+      setChecklist([]);
+      setCheckInput("");
       setFiles([]);
       onClose();
     } catch (e: any) {
-      setErr(e.message || 'Có lỗi xảy ra');
+      setErr(e.message || "Có lỗi xảy ra");
     } finally {
       setIsSubmitting(false);
     }
@@ -168,10 +193,14 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
 
   const getPriorityColor = (p: Priority) => {
     switch (p) {
-      case 'LOW': return 'bg-gray-100 text-gray-700 border-gray-200';
-      case 'MEDIUM': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'HIGH': return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'CRITICAL': return 'bg-red-50 text-red-700 border-red-200';
+      case "LOW":
+        return "bg-gray-100 text-gray-700 border-gray-200";
+      case "MEDIUM":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "HIGH":
+        return "bg-orange-50 text-orange-700 border-orange-200";
+      case "CRITICAL":
+        return "bg-red-50 text-red-700 border-red-200";
     }
   };
 
@@ -186,21 +215,43 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
               </div>
               <div>
                 <h3 className="text-xl font-bold">Tạo Task Mới</h3>
-                <p className="text-blue-100 text-sm mt-0.5">Thêm công việc cho dự án</p>
+                <p className="text-blue-100 text-sm mt-0.5">
+                  Thêm công việc cho dự án
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
               className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-200 flex items-center justify-center hover:rotate-90"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -213,14 +264,24 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Title */}
             <div className="group">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                <svg
+                  className="w-4 h-4 text-indigo-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                  />
                 </svg>
                 Tiêu đề <span className="text-red-500">*</span>
               </label>
               <input
                 value={title}
-                onChange={e => setTitle(e.target.value)}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="VD: Xây UI trang Product List"
                 className="w-full rounded-2xl border-2 border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-300"
               />
@@ -229,14 +290,24 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Description */}
             <div className="group">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                <svg
+                  className="w-4 h-4 text-indigo-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h7"
+                  />
                 </svg>
                 Mô tả
               </label>
               <textarea
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 placeholder="Mô tả ngắn: scope, link Figma, swagger…"
                 className="w-full rounded-2xl border-2 border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 resize-y group-hover:border-gray-300"
@@ -246,14 +317,24 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Acceptance Criteria */}
             <div className="group">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-4 h-4 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 Tiêu chí chấp nhận / Định nghĩa hoàn thành
               </label>
               <textarea
                 value={acceptance}
-                onChange={e => setAcceptance(e.target.value)}
+                onChange={(e) => setAcceptance(e.target.value)}
                 rows={5}
                 placeholder="- Khớp Figma 100%&#10;- Lighthouse &gt;= 90&#10;- QA pass toàn bộ test case"
                 className="w-full rounded-2xl border-2 border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all duration-200 group-hover:border-gray-300"
@@ -263,16 +344,29 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Checklist */}
             <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 border border-slate-200">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-3">
-                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <svg
+                  className="w-5 h-5 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
                 </svg>
                 Danh sách kiểm tra
               </label>
               <div className="flex gap-2">
                 <input
                   value={checkInput}
-                  onChange={e => setCheckInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
+                  onChange={(e) => setCheckInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" &&
+                    (e.preventDefault(), addChecklistItem())
+                  }
                   placeholder="Nhập bước rồi Enter (VD: Tạo branch, Viết unit test...)"
                   className="flex-1 rounded-xl border-2 border-white bg-white/80 backdrop-blur-sm px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
                 />
@@ -284,17 +378,24 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
                 </button>
               </div>
               <ul className="mt-4 space-y-2">
-                {checklist.map(item => (
-                  <li key={item.id} className="flex items-center gap-3 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl px-4 py-3 hover:shadow-md transition-all duration-200 group">
+                {checklist.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center gap-3 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl px-4 py-3 hover:shadow-md transition-all duration-200 group"
+                  >
                     <input
                       type="checkbox"
                       checked={item.done}
-                      onChange={e => updateChecklistItem(item.id, { done: e.target.checked })}
+                      onChange={(e) =>
+                        updateChecklistItem(item.id, { done: e.target.checked })
+                      }
                       className="h-5 w-5 rounded-lg border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     />
                     <input
                       value={item.title}
-                      onChange={e => updateChecklistItem(item.id, { title: e.target.value })}
+                      onChange={(e) =>
+                        updateChecklistItem(item.id, { title: e.target.value })
+                      }
                       className="flex-1 bg-transparent outline-none text-gray-700 font-medium"
                     />
                     <button
@@ -306,7 +407,9 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
                   </li>
                 ))}
                 {checklist.length === 0 && (
-                  <li className="text-gray-500 text-sm italic text-center py-6">Chưa có checklist nào</li>
+                  <li className="text-gray-500 text-sm italic text-center py-6">
+                    Chưa có checklist nào
+                  </li>
                 )}
               </ul>
             </div>
@@ -314,8 +417,18 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Attachments */}
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-3">
-                <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                <svg
+                  className="w-5 h-5 text-purple-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
                 </svg>
                 Đính kèm
               </label>
@@ -333,24 +446,42 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
                 >
                   Chọn file
                 </button>
-                <p className="text-xs text-gray-500 mt-2">hoặc kéo thả vào đây</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  hoặc kéo thả vào đây
+                </p>
               </div>
               {files.length > 0 && (
                 <ul className="mt-4 space-y-2">
-                  {files.map(f => (
-                    <li key={f.id} className="flex items-center gap-3 bg-white/80 p-3 rounded-xl border border-purple-100">
+                  {files.map((f) => (
+                    <li
+                      key={f.id}
+                      className="flex items-center gap-3 bg-white/80 p-3 rounded-xl border border-purple-100"
+                    >
                       {f.preview ? (
-                        <img src={f.preview} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                        <img
+                          src={f.preview}
+                          alt=""
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 uppercase">
-                          {f.mime.split('/')[1] || 'FILE'}
+                          {f.mime.split("/")[1] || "FILE"}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate">{f.name}</div>
-                        <div className="text-xs text-gray-500">{(f.size / 1024).toFixed(1)} KB</div>
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {f.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {(f.size / 1024).toFixed(1)} KB
+                        </div>
                       </div>
-                      <button onClick={() => removeFile(f.id)} className="text-gray-400 hover:text-red-500">✕</button>
+                      <button
+                        onClick={() => removeFile(f.id)}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        ✕
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -362,16 +493,28 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
           <div className="space-y-6">
             <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
               <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-4 text-base">
-                <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                <svg
+                  className="w-5 h-5 text-gray-700"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                  />
                 </svg>
                 Thuộc tính
               </h4>
 
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Mức ưu tiên</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                Mức ưu tiên
+              </label>
               <select
                 value={priority}
-                onChange={e => setPriority(e.target.value as Priority)}
+                onChange={(e) => setPriority(e.target.value as Priority)}
                 className={`mt-2 w-full rounded-xl border-2 px-4 py-2.5 font-semibold text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${getPriorityColor(priority)}`}
               >
                 <option value="LOW">🟢 Thấp</option>
@@ -381,11 +524,13 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
               </select>
 
               <div className="mt-4">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Deadline</label>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  Deadline
+                </label>
                 <input
                   type="date"
                   value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
+                  onChange={(e) => setDueDate(e.target.value)}
                   className="mt-2 w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -394,29 +539,48 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Assignees */}
             <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border border-emerald-200 shadow-sm">
               <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-4 text-base">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <svg
+                  className="w-5 h-5 text-emerald-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
                 </svg>
                 Giao việc
               </h4>
               <div className="max-h-52 overflow-auto rounded-xl bg-white border border-emerald-200 divide-y divide-emerald-100 shadow-inner">
-                {members.map(m => {
+                {members.map((m) => {
                   const label = m.name || m.email;
                   const checked = assigneeIds.includes(m.id);
                   return (
-                    <label key={m.id} className="flex items-center justify-between px-4 py-3 hover:bg-emerald-50 cursor-pointer transition-colors duration-150 group">
-                      <span className="text-sm text-gray-800 truncate font-medium">{label}</span>
+                    <label
+                      key={m.id}
+                      className="flex items-center justify-between px-4 py-3 hover:bg-emerald-50 cursor-pointer transition-colors duration-150 group"
+                    >
+                      <span className="text-sm text-gray-800 truncate font-medium">
+                        {label}
+                      </span>
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => toggleInArray(setAssigneeIds, assigneeIds, m.id)}
+                        onChange={() =>
+                          toggleInArray(setAssigneeIds, assigneeIds, m.id)
+                        }
                         className="h-5 w-5 rounded-lg border-2 border-emerald-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                       />
                     </label>
                   );
                 })}
                 {members.length === 0 && (
-                  <div className="px-4 py-8 text-sm text-gray-500 text-center italic">Chưa có thành viên</div>
+                  <div className="px-4 py-8 text-sm text-gray-500 text-center italic">
+                    Chưa có thành viên
+                  </div>
                 )}
               </div>
             </div>
@@ -424,15 +588,30 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
             {/* Watchers (Single Select) */}
             <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl p-5 border border-amber-200 shadow-sm">
               <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-4 text-base">
-                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <svg
+                  className="w-5 h-5 text-amber-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
                 </svg>
                 Người theo dõi
               </h4>
               <div className="bg-white rounded-xl border border-amber-200 p-3 shadow-inner">
                 <select
-                  value={watcherIds[0] || ''}
+                  value={watcherIds[0] || ""}
                   onChange={(e) => {
                     const val = e.target.value;
                     setWatcherIds(val ? [val] : []);
@@ -446,23 +625,37 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-2 italic">Chỉ được chọn 1 người theo dõi.</p>
+                <p className="text-xs text-gray-500 mt-2 italic">
+                  Chỉ được chọn 1 người theo dõi.
+                </p>
               </div>
             </div>
 
             {/* Labels (đã hoàn tất) */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-200 shadow-sm">
               <h4 className="flex items-center gap-2 font-bold text-gray-900 mb-4 text-base">
-                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                <svg
+                  className="w-5 h-5 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                  />
                 </svg>
                 Labels
               </h4>
               <div className="flex gap-2">
                 <input
                   value={labelInput}
-                  onChange={e => setLabelInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLabel())}
+                  onChange={(e) => setLabelInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), addLabel())
+                  }
                   placeholder="Nhập label"
                   className="flex-1 rounded-xl border-2 border-blue-200 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
@@ -474,8 +667,11 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
                 </button>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {labels.map(l => (
-                  <span key={l} className="px-2.5 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium inline-flex items-center gap-2">
+                {labels.map((l) => (
+                  <span
+                    key={l}
+                    className="px-2.5 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium inline-flex items-center gap-2"
+                  >
                     {l}
                     <button
                       onClick={() => removeLabel(l)}
@@ -487,7 +683,9 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
                   </span>
                 ))}
                 {labels.length === 0 && (
-                  <span className="text-xs text-gray-400 italic">Chưa có label</span>
+                  <span className="text-xs text-gray-400 italic">
+                    Chưa có label
+                  </span>
                 )}
               </div>
             </div>
@@ -497,10 +695,19 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
         {/* Footer */}
         <div className="px-8 py-5 border-t bg-gray-50 flex items-center justify-between">
           <div className="text-sm">
-            {err ? <span className="text-red-600">{err}</span> : <span className="text-gray-500">Nhập đủ thông tin cần thiết rồi bấm “Tạo task”.</span>}
+            {err ? (
+              <span className="text-red-600">{err}</span>
+            ) : (
+              <span className="text-gray-500">
+                Nhập đủ thông tin cần thiết rồi bấm “Tạo task”.
+              </span>
+            )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-50">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
+            >
               Hủy
             </button>
             <button
@@ -508,7 +715,7 @@ export default function CreateTaskModal({ projectId, members, open, onClose, onC
               disabled={!isValid || isSubmitting}
               className="px-5 py-2 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold disabled:opacity-60"
             >
-              {isSubmitting ? 'Đang tạo…' : 'Tạo task'}
+              {isSubmitting ? "Đang tạo…" : "Tạo task"}
             </button>
           </div>
         </div>

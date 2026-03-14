@@ -1,15 +1,15 @@
 // apps/web/app/api/projects/[projectId]/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireProjectRole, requireUser, getCurrentUser } from '@/lib/authz';
-import { isSysAdmin } from '@/lib/rbac';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireProjectRole, requireUser, getCurrentUser } from "@/lib/authz";
+import { isSysAdmin } from "@/lib/rbac";
+import { z } from "zod";
 import { logProjectActivity } from "@/lib/activity-log";
 
 const UpdateProject = z.object({
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  status: z.enum(['active', 'archived']).optional(),
+  status: z.enum(["active", "archived"]).optional(),
   leadId: z.string().cuid().nullable().optional(),
 });
 
@@ -17,11 +17,11 @@ type Ctx = { params: Promise<{ projectId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
   try {
-    const { projectId } = await ctx.params;                // ✅ Next 15: await
+    const { projectId } = await ctx.params; // ✅ Next 15: await
     const user = await requireUser();
     const admin = isSysAdmin((user as any).globalRole);
 
-    if (!admin) await requireProjectRole(projectId, 'VIEWER');
+    if (!admin) await requireProjectRole(projectId, "VIEWER");
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -32,7 +32,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
 
     if (!project) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     return NextResponse.json(project);
@@ -113,8 +113,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
 export async function DELETE(_req: Request, ctx: Ctx) {
   try {
-    const { projectId } = await ctx.params;                // ✅ Next 15: await
-    await requireProjectRole(projectId, 'MANAGER');
+    const { projectId } = await ctx.params; // ✅ Next 15: await
+    await requireProjectRole(projectId, "MANAGER");
 
     // (khuyến nghị) cân nhắc soft-delete thay vì xoá cứng
     await prisma.project.delete({ where: { id: projectId } });
