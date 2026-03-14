@@ -33,62 +33,6 @@ const UpdateSchema = z.object({
   leadId: z.string().cuid().nullable().optional(),
 });
 
-/** ===== Server Action độc lập ===== */
-export async function updateProjectAction(projectId: string, formData: FormData) {
-  "use server";
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect("/login");
-
-  const parsed = UpdateSchema.safeParse({
-    name: String(formData.get("name") ?? ""),
-    description: (formData.get("description") as string) ?? null,
-    status: (formData.get("status") as ProjectStatus) ?? DEFAULT_PROJECT_STATUS,
-    leadId: (() => {
-      const v = formData.get("leadId");
-      if (!v || v === "none") return null;
-      return String(v);
-    })(),
-  });
-
-  if (!parsed.success) {
-    console.error("updateProject invalid:", parsed.error.flatten().fieldErrors);
-    redirect(`/projects/${projectId}/settings?error=invalid`);
-  }
-
-  const { name, description, status, leadId } = parsed.data;
-
-  // Nếu có leadId, đảm bảo người đó là thành viên dự án
-  if (leadId) {
-    const exists = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId: leadId } },
-      select: { userId: true },
-    });
-    if (!exists) redirect(`/projects/${projectId}/settings?error=lead_not_member`);
-  }
-
-  const before = await prisma.project.findUnique({
-    where: { id: projectId },
-  });
-
-  const updated = await prisma.project.update({
-    where: { id: projectId },
-    data: { name, description: description ?? null, status, leadId },
-  });
-
-  // 👇 Ghi lịch sử hệ thống
-  await logProjectActivity({
-    projectId,
-    actorId: session.user.id,          // người đang chỉnh sửa
-    type: "PROJECT_UPDATED",
-    message: "Cập nhật thông tin dự án",
-    meta: { before, after: updated },  // có thể bỏ nếu muốn log nhẹ
-  });
-
-  revalidatePath(`/projects/${projectId}`, "page");
-  revalidatePath(`/projects/${projectId}/settings`, "page");
-  redirect(`/projects/${projectId}/settings?saved=1`);
-}
-
 /** ===== Page ===== */
 export default async function ProjectSettingsPage({
   params,
