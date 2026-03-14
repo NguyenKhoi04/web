@@ -1,9 +1,10 @@
 // apps/web/app/api/projects/[projectId]/comments/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, Prisma, $Enums } from "@/lib/prisma";
 import { requireProjectRole, requireUser } from "@/lib/authz";
 import { z } from "zod";
-import { Prisma, $Enums } from "@/app/generated/prisma";
+
+
 
 const Query = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -18,11 +19,12 @@ const Body = z.object({
   attachments: z.array(z.any()).optional(),
 });
 
-type Ctx = { params: Promise<{ projectId: string }> };
-
 /* --------------------------- GET: list comments --------------------------- */
-export async function GET(req: Request, ctx: Ctx) {
-  const { projectId } = await ctx.params;
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  const { projectId } = await params;
 
   await requireProjectRole(projectId, "VIEWER");
 
@@ -62,8 +64,11 @@ export async function GET(req: Request, ctx: Ctx) {
 }
 
 /* -------------------------- POST: create comment -------------------------- */
-export async function POST(req: Request, ctx: Ctx) {
-  const { projectId } = await ctx.params;
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  const { projectId } = await params;
 
   const me = await requireUser();                  // ✅ lấy user hiện tại
   await requireProjectRole(projectId, "MEMBER");   // ✅ check quyền

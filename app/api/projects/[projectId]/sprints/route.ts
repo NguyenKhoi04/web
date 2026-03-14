@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProjectRole } from "@/lib/authz";
 import { z } from "zod";
-import { SprintStatus } from "@/app/generated/prisma";
+import { SprintStatus } from "@/lib/prisma";
 
 const Create = z.object({
   name: z.string().min(1),
@@ -35,7 +35,7 @@ export async function POST(req: Request, context: any) {
   if (data.endDate < data.startDate) {
     return NextResponse.json(
       { error: "endDate must be after startDate" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

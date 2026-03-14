@@ -18,7 +18,9 @@ export async function GET() {
     orderBy: { joinedAt: "desc" },
   });
 
-  const orgs = members.map((m) => ({
+  type MemberWithOrganization = typeof members[number];
+
+  const orgs = members.map((m: MemberWithOrganization) => ({
     id: m.organization.id,
     name: m.organization.name,
     slug: m.organization.slug,

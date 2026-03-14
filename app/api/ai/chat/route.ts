@@ -1,9 +1,8 @@
 // app/api/ai/chat/route.ts
-import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { retrieveHelp } from '@/lib/ai/help';
-import { chooseToolAndAnswer } from '@/lib/ai/engine';
-import { SprintStatus, TaskStatus } from "@/app/generated/prisma";
+import { NextRequest } from "next/server";
+import { prisma, SprintStatus } from "@/lib/prisma";
+import { retrieveHelp } from "@/lib/ai/help";
+import { chooseToolAndAnswer } from "@/lib/ai/engine";
 
 type ChatRequest = {
   sessionId?: string;
@@ -15,13 +14,20 @@ type ChatRequest = {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+// Local mapping to Prisma task status enum values
+enum TaskStatus {
+  TODO = "TODO",
+  IN_PROGRESS = "IN_PROGRESS",
+  DONE = "DONE",
+}
+
 // ...
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as ChatRequest;
 
-  if (!body.message || body.message.trim() === '') {
-    return new Response(JSON.stringify({ error: 'Message is required' }), {
+  if (!body.message || body.message.trim() === "") {
+    return new Response(JSON.stringify({ error: "Message is required" }), {
       status: 400,
     });
   }
@@ -35,8 +41,6 @@ export async function POST(req: NextRequest) {
     userContext = `User: ${session.user.name} (${session.user.email})\nGlobal Role: ${session.user.globalRole}`;
   }
 
-
-
   // ...
 
   // 2. Get Project Context
@@ -46,9 +50,9 @@ export async function POST(req: NextRequest) {
       include: {
         members: {
           where: { userId: session?.user?.id },
-          select: { role: true }
-        }
-      }
+          select: { role: true },
+        },
+      },
     });
 
     if (project) {
@@ -57,19 +61,31 @@ export async function POST(req: NextRequest) {
       // Fetch Active Sprint
       const activeSprint = await prisma.sprint.findFirst({
         where: { projectId: body.projectId, status: SprintStatus.ACTIVE },
-        select: { name: true, goal: true, endDate: true }
+        select: { name: true, goal: true, endDate: true },
       });
 
       // Fetch Task Stats
       const taskStats = await prisma.task.groupBy({
-        by: ['status'],
+        by: ["status"],
         where: { projectId: body.projectId },
-        _count: { status: true }
+        _count: { status: true },
       });
 
-      const todoCount = taskStats.find(t => t.status === TaskStatus.TODO)?._count.status || 0;
-      const inProgressCount = taskStats.find(t => t.status === TaskStatus.IN_PROGRESS)?._count.status || 0;
-      const doneCount = taskStats.find(t => t.status === TaskStatus.DONE)?._count.status || 0;
+      const todoCount =
+        taskStats.find(
+          (t: { status: string; _count: { status: number } }) =>
+            t.status === TaskStatus.TODO,
+        )?._count.status || 0;
+      const inProgressCount =
+        taskStats.find(
+          (t: { status: string; _count: { status: number } }) =>
+            t.status === TaskStatus.IN_PROGRESS,
+        )?._count.status || 0;
+      const doneCount =
+        taskStats.find(
+          (t: { status: string; _count: { status: number } }) =>
+            t.status === TaskStatus.DONE,
+        )?._count.status || 0;
 
       let sprintContext = "No Active Sprint.";
       if (activeSprint) {
@@ -86,7 +102,7 @@ Task Overview: [TODO: ${todoCount}, IN PROGRESS: ${inProgressCount}, DONE: ${don
     }
   }
 
-  // 1. Lấy hoặc tạo ChatSession
+  // 1. Get or create ChatSession
   let chatSession =
     body.sessionId &&
     (await prisma.chatSession.findUnique({ where: { id: body.sessionId } }));
@@ -105,7 +121,7 @@ Task Overview: [TODO: ${todoCount}, IN PROGRESS: ${inProgressCount}, DONE: ${don
   const userMessage = await prisma.chatMessage.create({
     data: {
       sessionId: chatSession.id,
-      role: 'user',
+      role: "user",
       content: body.message,
       orgId: body.orgId ?? null,
       projectId: body.projectId ?? null,
@@ -121,11 +137,16 @@ Task Overview: [TODO: ${todoCount}, IN PROGRESS: ${inProgressCount}, DONE: ${don
   // 3.1 Fetch recent history (for context)
   const historyMessages = await prisma.chatMessage.findMany({
     where: { sessionId: chatSession.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 10, // Take last 10 messages
   });
   // Reverse to chronological order
-  const history = historyMessages.reverse().map(m => ({ role: m.role, content: m.content }));
+  const history = historyMessages
+    .reverse()
+    .map((m: { role: string; content: string }) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
   // 4. Engine sinh answer
   const { answer } = await chooseToolAndAnswer({
@@ -133,14 +154,14 @@ Task Overview: [TODO: ${todoCount}, IN PROGRESS: ${inProgressCount}, DONE: ${don
     helpSnippets,
     history,
     userContext,
-    projectContext
+    projectContext,
   });
 
   // 5. Lưu message của assistant
   const assistantMessage = await prisma.chatMessage.create({
     data: {
       sessionId: chatSession.id,
-      role: 'assistant',
+      role: "assistant",
       content: answer,
       orgId: body.orgId ?? null,
       projectId: body.projectId ?? null,
@@ -164,6 +185,6 @@ Task Overview: [TODO: ${todoCount}, IN PROGRESS: ${inProgressCount}, DONE: ${don
       ],
       helpSnippets,
     }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } },
+    { status: 200, headers: { "Content-Type": "application/json" } },
   );
 }

@@ -1,11 +1,11 @@
 // apps/web/lib/activity-log.ts
 import { prisma } from "@/lib/prisma";
-import type { ActivityType } from "@/app/generated/prisma"; // đường dẫn đúng với PrismaClient của bạn
+import type { ActivityType } from "@/lib/prisma"; // đường dẫn đúng với PrismaClient của bạn
 
 // Log hoạt động cấp dự án (không gắn task cụ thể)
 export async function logProjectActivity(opts: {
   projectId: string;
-  actorId: string;                 // BẮT BUỘC
+  actorId: string; // BẮT BUỘC
   type: ActivityType;
   message?: string | null;
   meta?: unknown;
@@ -27,7 +27,7 @@ export async function logProjectActivity(opts: {
 export async function logTaskActivity(opts: {
   projectId: string;
   taskId: string;
-  actorId: string;                 // BẮT BUỘC
+  actorId: string; // BẮT BUỘC
   type: ActivityType;
   message?: string | null;
   meta?: unknown;

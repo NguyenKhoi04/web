@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProjectRole } from "@/lib/authz";
 import { z } from "zod";
-import { SprintStatus } from "@/app/generated/prisma";
+import { SprintStatus } from "@/lib/prisma";
 
 const Update = z.object({
   name: z.string().min(1).optional(),
@@ -12,8 +12,11 @@ const Update = z.object({
   status: z.nativeEnum(SprintStatus).optional(),
 });
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ projectId: string; sprintId: string }> }) {
-  const { projectId, sprintId } = await params;
+export async function PATCH(
+  req: Request,
+  { params }: { params: { projectId: string; sprintId: string } },
+) {
+  const { projectId, sprintId } = params;
   await requireProjectRole(projectId, "LEAD");
   const data = Update.parse(await req.json());
   const s = await prisma.sprint.update({
@@ -23,8 +26,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ projec
   return NextResponse.json(s);
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ projectId: string; sprintId: string }> }) {
-  const { projectId, sprintId } = await params;
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { projectId: string; sprintId: string } },
+) {
+  const { projectId, sprintId } = params;
   await requireProjectRole(projectId, "LEAD");
   await prisma.sprint.delete({ where: { id: sprintId } });
   return NextResponse.json({ ok: true });

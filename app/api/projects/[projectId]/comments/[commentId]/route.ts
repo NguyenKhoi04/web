@@ -1,16 +1,17 @@
-// apps/web/app/api/projects/comments/[commentId]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProjectRole, requireUser } from "@/lib/authz";
 import { z } from "zod";
 
 const PatchBody = z.object({
-  content: z.string().min(1).max(5000)
+  content: z.string().min(1).max(5000),
 });
 
-export async function PATCH(req: Request, context: any) {
+type Ctx = { params: Promise<{ projectId: string; commentId: string }> };
+
+export async function PATCH(req: Request, { params }: Ctx) {
   const me = await requireUser();
-  const { projectId, commentId } = context.params;
+  const { projectId, commentId } = await params;
 
   const { content } = PatchBody.parse(await req.json());
 
@@ -34,9 +35,9 @@ export async function PATCH(req: Request, context: any) {
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_req: Request, context: any) {
+export async function DELETE(_req: Request, { params }: Ctx) {
   const me = await requireUser();
-  const { projectId, commentId } = context.params;
+  const { projectId, commentId } = await params;
 
   const c = await prisma.projectComment.findUnique({
     where: { id: commentId }

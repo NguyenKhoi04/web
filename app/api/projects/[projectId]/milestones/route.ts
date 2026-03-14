@@ -11,10 +11,12 @@ const CreateSchema = z.object({
   status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED"]).optional(),
 });
 
-export async function GET(req: Request, context: any) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
   try {
-    const { projectId } = context.params;
-
+    const { projectId } = await params;
     await requireProjectRole(projectId, "VIEWER");
 
     const milestones = await prisma.milestone.findMany({
@@ -53,10 +55,12 @@ export async function GET(req: Request, context: any) {
   }
 }
 
-export async function POST(req: Request, context: any) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
   try {
-    const { projectId } = context.params;
-
+    const { projectId } = await params;
     await requireProjectRole(projectId, "LEAD");
 
     const body = await req.json();

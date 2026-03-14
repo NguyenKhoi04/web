@@ -2,8 +2,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
-import { isSysAdmin } from "@/lib/rbac";
 import { z } from "zod";
+import { Project } from "@/app/generated/prisma/wasm";
+// Removed unused and non-existent type imports from "@prisma/client"
+
 
 const CreateProject = z.object({
   name: z.string().min(1),
@@ -25,13 +27,13 @@ export async function GET(req: Request) {
       | "owned"
       | "joined";
 
-    let where: any = {};
+    let where: Record<string, any> = {};
 
-    // Admin có thể thấy tất cả nếu muốn mở rộng thêm scope=all; ở đây giữ đúng yêu cầu owned/joined
+    // Admins can see all if you want to extend with scope=all; here we keep only owned/joined as required
     if (scope === "owned") {
       where = { createdById: me.id };
     } else if (scope === "joined") {
-      // dự án đã tham gia nhưng KHÔNG phải tôi là chủ
+      // Projects I have joined but I am NOT the owner
       where = {
         members: { some: { userId: me.id } },
         NOT: { createdById: me.id },
@@ -48,8 +50,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ items: projects });
     }
 
-    // Tính tiến độ theo task (làm gộp một lần để tránh N+1)
-    const ids = projects.map((p) => p.id);
+    // Calculate progress by task (batch to avoid N+1)
+    const ids = projects.map(
+      (p: Project & { _count: { members: number } }) => p.id,
+    );
     if (ids.length === 0) return NextResponse.json({ items: [] });
 
     const totals = await prisma.task.groupBy({
@@ -64,12 +68,22 @@ export async function GET(req: Request) {
       _count: { _all: true },
     });
 
-    const totalMap = new Map(totals.map((t) => [t.projectId, t._count._all]));
-    const doneMap = new Map(dones.map((d) => [d.projectId, d._count._all]));
+    const totalMap = new Map(
+      totals.map((t: { projectId: string; _count: { _all: number } }) => [
+        t.projectId,
+        t._count._all,
+      ]),
+    );
+    const doneMap = new Map(
+      dones.map((d: { projectId: string; _count: { _all: number } }) => [
+        d.projectId,
+        d._count._all,
+      ]),
+    );
 
-    const items = projects.map((p) => {
-      const total = totalMap.get(p.id) ?? 0;
-      const done = doneMap.get(p.id) ?? 0;
+    const items = projects.map((p: Project & { _count: { members: number } }) => {
+      const total = Number(totalMap.get(p.id) ?? 0);
+      const done = Number(doneMap.get(p.id) ?? 0);
       const progress = total ? Math.round((done / total) * 100) : 0;
       return {
         id: p.id,
@@ -81,17 +95,21 @@ export async function GET(req: Request) {
         totalTasks: total,
         doneTasks: done,
         progress,
-        status: p.status, // nếu FE đang cần
+        status: p.status,
       };
     });
 
     return NextResponse.json({ items });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.status || 500 });
+  } catch (e: unknown) {
+    const err = e as { message?: string; status?: number; code?: string };
+    return NextResponse.json(
+      { error: err?.message ?? "Internal error" },
+      { status: err?.status ?? 500 },
+    );
   }
 }
 
-// tạo org "cá nhân" nếu chưa có
+// Create "personal" org if not exists
 async function ensurePersonalOrg(userId: string) {
   const mem = await prisma.organizationMember.findFirst({ where: { userId } });
   if (mem) return mem.organizationId;
@@ -116,7 +134,7 @@ export async function POST(req: Request) {
     const orgId = await ensurePersonalOrg(user.id);
     const key = parsed.key.toUpperCase();
 
-    const project = await prisma.$transaction(async (tx) => {
+    const project = await prisma.$transaction(async (tx: typeof prisma) => {
       const p = await tx.project.create({
         data: {
           organizationId: orgId,
@@ -131,10 +149,10 @@ export async function POST(req: Request) {
 
       await tx.boardColumn.createMany({
         data: [
-          { projectId: p.id, name: "Chưa làm", order: 1, isDefault: true },
-          { projectId: p.id, name: "Đang làm", order: 2 },
-          { projectId: p.id, name: "Đánh giá", order: 3 },
-          { projectId: p.id, name: "Hoàn thành", order: 4 },
+          { projectId: p.id, name: "To Do", order: 1, isDefault: true },
+          { projectId: p.id, name: "In Progress", order: 2 },
+          { projectId: p.id, name: "Review", order: 3 },
+          { projectId: p.id, name: "Done", order: 4 },
         ],
       });
 
@@ -142,10 +160,14 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(project, { status: 201 });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    const err = e as { message?: string; status?: number; code?: string };
+    if (err?.code === "P2002") {
       return NextResponse.json({ error: "KEY đã tồn tại" }, { status: 409 });
     }
-    return NextResponse.json({ error: e.message }, { status: e.status || 500 });
+    return NextResponse.json(
+      { error: err?.message ?? "Internal error" },
+      { status: err?.status ?? 500 },
+    );
   }
 }
