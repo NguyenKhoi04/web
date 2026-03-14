@@ -7,12 +7,14 @@ export async function GET(req: Request) {
   const query = (searchParams.get('query') ?? '').trim();
 
   const users = await prisma.user.findMany({
-    where: query ? {
-      OR: [
-        { email: { contains: query, mode: 'insensitive' } },
-        { name: { contains: query, mode: 'insensitive' } },
-      ],
-    } : undefined,
+    where: query
+      ? {
+          OR: [
+            { email: { contains: query } },
+            { name: { contains: query } },
+          ],
+        }
+      : undefined,
     select: { id: true, name: true, email: true, status: true, globalRole: true, lastLoginAt: true },
     orderBy: { createdAt: 'desc' },
     take: 50,
