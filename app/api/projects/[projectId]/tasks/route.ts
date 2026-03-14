@@ -1,13 +1,13 @@
 // app/api/projects/[projectId]/tasks/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireProjectRole } from '@/lib/authz';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireProjectRole } from "@/lib/authz";
+import { z } from "zod";
 
-/** Chấp nhận 'YYYY-MM-DD', ISO string, hoặc Date; trả về Date|null */
+/** Accepts 'YYYY-MM-DD', ISO string, or Date; returns Date|null */
 const DateLike = z
   .union([
-    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD'),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
     z.string().datetime(), // ISO
     z.date(),
   ])
@@ -16,51 +16,65 @@ const DateLike = z
   .transform((v) => {
     if (!v) return null;
     if (v instanceof Date) return v;
-    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
       return new Date(`${v}T00:00:00Z`);
     }
     return new Date(v as string);
   });
 
+// Use z.cuid2() directly instead of z.string().cuid2()
 const CreateTask = z.object({
   title: z.string().min(1),
   description: z.string().optional().nullable(),
   acceptance: z.string().optional().nullable(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"),
   dueDate: DateLike,
-  assigneeIds: z.array(z.string().cuid2()).optional().default([]),
+  assigneeIds: z.array(z.cuid2()).optional().default([]),
   estimateH: z.number().optional().nullable(),
   labels: z.array(z.string()).optional().default([]),
-  watcherIds: z.array(z.string().cuid2()).optional().default([]),
-  checklist: z.array(z.object({ title: z.string() })).optional().default([]),
+  watcherIds: z.array(z.cuid2()).optional().default([]),
+  checklist: z
+    .array(z.object({ title: z.string() }))
+    .optional()
+    .default([]),
   attachmentIds: z.array(z.string()).optional().default([]),
 });
 
 // =================== GET ===================
-export async function GET(req: Request, ctx: Ctx) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
   try {
-    const { projectId } = await ctx.params;
+    const { projectId } = await params;
     if (!projectId) {
-      return NextResponse.json({ error: 'Missing projectId' }, { status: 400 });
+      return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
     // ✅ Chỉ cần 'VIEWER' là đủ; requireProjectRole của bạn đã hỗ trợ “ngưỡng”:
     // MANAGER/LEAD/MEMBER/REVIEWER đều pass qua.
-    await requireProjectRole(projectId, ['VIEWER']);
+    await requireProjectRole(projectId, ["VIEWER"]);
 
     const { searchParams } = new URL(req.url);
-    const view = searchParams.get('view');
-    const status = searchParams.get('status') as string | null;
+    const view = searchParams.get("view");
+    const status = searchParams.get("status") as string | null;
 
-    if (view === 'board') {
+    if (view === "board") {
       const [columns, tasks] = await Promise.all([
         prisma.boardColumn.findMany({
           where: { projectId },
-          orderBy: { order: 'asc' },
+          orderBy: { order: "asc" },
         }),
         prisma.task.findMany({
-          where: { projectId, ...(status ? { status } : {}) },
-          orderBy: [{ columnId: 'asc' }, { order: 'asc' }, { createdAt: 'desc' }],
+          where: {
+            projectId,
+            ...(status ? { status: status as any } : {}),
+          },
+          orderBy: [
+            { columnId: "asc" },
+            { order: "asc" },
+            { createdAt: "desc" },
+          ],
           select: {
             id: true,
             title: true,
@@ -70,7 +84,9 @@ export async function GET(req: Request, ctx: Ctx) {
             priority: true,
             status: true,
             assignees: {
-              select: { user: { select: { id: true, name: true, email: true } } },
+              select: {
+                user: { select: { id: true, name: true, email: true } },
+              },
             },
             dueDate: true,
           },
@@ -81,7 +97,7 @@ export async function GET(req: Request, ctx: Ctx) {
 
     const items = await prisma.task.findMany({
       where: { projectId },
-      orderBy: [{ columnId: 'asc' }, { order: 'asc' }, { createdAt: 'desc' }],
+      orderBy: [{ columnId: "asc" }, { order: "asc" }, { createdAt: "desc" }],
       include: {
         column: { select: { id: true, name: true } },
         assignees: {
@@ -93,12 +109,12 @@ export async function GET(req: Request, ctx: Ctx) {
     });
 
     // Check for "Complete Requests"
-    const taskIds = items.map(t => t.id);
+    const taskIds = items.map((t) => t.id);
     const reports = await prisma.activityLog.findMany({
       where: {
         projectId,
         taskId: { in: taskIds },
-        message: 'Báo cáo hoàn tất task',
+        message: "Báo cáo hoàn tất task",
       },
       select: { taskId: true, createdAt: true },
     });
@@ -106,17 +122,18 @@ export async function GET(req: Request, ctx: Ctx) {
     // Map of TaskID -> Latest Report Time
     const latestReportMap = new Map<string, Date>();
     for (const r of reports) {
+      if (!r.taskId) continue;
       const existing = latestReportMap.get(r.taskId);
       if (!existing || new Date(r.createdAt) > existing) {
         latestReportMap.set(r.taskId, new Date(r.createdAt));
       }
     }
 
-    const itemsWithFlag = items.map(t => {
+    const itemsWithFlag = items.map((t) => {
       const reportTime = latestReportMap.get(t.id);
       let isPending = false;
 
-      if (reportTime && t.status === 'REVIEW') {
+      if (reportTime && t.status === "REVIEW") {
         const taskTime = t.updatedAt.getTime();
         const repTime = reportTime.getTime();
 
@@ -130,39 +147,42 @@ export async function GET(req: Request, ctx: Ctx) {
       return {
         ...t,
         owner: t.createdBy, // Map createdBy to owner for frontend compatibility
-        hasPendingReport: isPending
+        hasPendingReport: isPending,
       };
     });
 
     return NextResponse.json({ items: itemsWithFlag });
   } catch (e: any) {
-    console.error('[GET /api/projects/[id]/tasks]', e);
+    console.error("[GET /api/projects/[id]/tasks]", e);
     return NextResponse.json(
-      { error: e?.message ?? 'Internal Server Error' },
+      { error: e?.message ?? "Internal Server Error" },
       { status: e?.status ?? 500 },
     );
   }
 }
 
 // =================== POST ===================
-export async function POST(req: Request, ctx: Ctx) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
   try {
-    const { projectId } = await ctx.params;
+    const { projectId } = await params;
     if (!projectId) {
-      return NextResponse.json({ error: 'Missing projectId' }, { status: 400 });
+      return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
-    const guard = await requireProjectRole(projectId, ['LEAD', 'MANAGER']);
+    const guard = await requireProjectRole(projectId, ["LEAD", "MANAGER"]);
     const data = CreateTask.parse(await req.json());
 
     const defaultCol = await prisma.boardColumn.findFirst({
       where: { projectId },
-      orderBy: [{ isDefault: 'desc' }, { order: 'asc' }],
+      orderBy: [{ isDefault: "desc" }, { order: "asc" }],
       select: { id: true },
     });
 
     // 1. Xử lý Description + Acceptance + Checklist
-    let finalDescription = data.description || '';
+    let finalDescription = data.description || "";
 
     if (data.acceptance) {
       finalDescription += `\n\n### Acceptance Criteria\n${data.acceptance}`;
@@ -199,7 +219,8 @@ export async function POST(req: Request, ctx: Ctx) {
     const orderValue = Math.floor(Date.now() / 1000);
 
     // Xử lý status tự động: Nếu có người theo dõi VÀ người thực hiện -> IN_PROGRESS
-    const initialStatus = (followerId && validAssigneeIds.length > 0) ? 'IN_PROGRESS' : 'TODO';
+    const initialStatus =
+      followerId && validAssigneeIds.length > 0 ? "IN_PROGRESS" : "TODO";
 
     // 4. Tạo Task
     const created = await prisma.task.create({
@@ -227,7 +248,9 @@ export async function POST(req: Request, ctx: Ctx) {
       },
       include: {
         column: { select: { id: true, name: true } },
-        assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+        assignees: {
+          select: { user: { select: { id: true, name: true, email: true } } },
+        },
         follower: { select: { id: true, name: true, email: true } },
         project: true,
       },
@@ -236,7 +259,7 @@ export async function POST(req: Request, ctx: Ctx) {
     // 5. Xử lý Labels (Tags)
     if (data.labels && data.labels.length > 0) {
       for (const labelName of data.labels) {
-        const slug = labelName.toLowerCase().replace(/\s+/g, '-');
+        const slug = labelName.toLowerCase().replace(/\s+/g, "-");
         // Tìm hoặc tạo Tag
         let tag = await prisma.tag.findUnique({
           where: { projectId_slug: { projectId, slug } },
@@ -247,9 +270,11 @@ export async function POST(req: Request, ctx: Ctx) {
           });
         }
         // Link Task -> Tag
-        await prisma.taskTag.create({
-          data: { taskId: created.id, tagId: tag.id },
-        }).catch(() => null); // bỏ qua nếu đã tồn tại (dù logic trên đã lọc)
+        await prisma.taskTag
+          .create({
+            data: { taskId: created.id, tagId: tag.id },
+          })
+          .catch(() => null); // bỏ qua nếu đã tồn tại (dù logic trên đã lọc)
       }
     }
 
@@ -259,13 +284,13 @@ export async function POST(req: Request, ctx: Ctx) {
       where: { projectId },
       select: { userId: true },
     });
-    const recipients = members.filter(m => m.userId !== guard.user.id);
+    const recipients = members.filter((m) => m.userId !== guard.user.id);
 
     if (recipients.length > 0) {
       await prisma.notification.createMany({
-        data: recipients.map(m => ({
+        data: recipients.map((m) => ({
           recipientId: m.userId,
-          type: 'TASK_CREATED',
+          type: "TASK_CREATED",
           projectId,
           taskId: created.id,
           data: {
@@ -278,29 +303,31 @@ export async function POST(req: Request, ctx: Ctx) {
     }
 
     // 2. Assigned (notify assignees except creator)
-    const assignedToNotify = validAssigneeIds.filter(uid => uid !== guard.user.id);
+    const assignedToNotify = validAssigneeIds.filter(
+      (uid) => uid !== guard.user.id,
+    );
     if (assignedToNotify.length > 0) {
       await prisma.notification.createMany({
-        data: assignedToNotify.map(uid => ({
+        data: assignedToNotify.map((uid) => ({
           recipientId: uid,
-          type: 'TASK_ASSIGNED',
+          type: "TASK_ASSIGNED",
           projectId,
           taskId: created.id,
           data: {
             taskTitle: created.title,
             projectKey: created.project.key,
             projectName: created.project.name,
-            assignerName: guard.user.name || guard.user.email
-          }
-        }))
+            assignerName: guard.user.name || guard.user.email,
+          },
+        })),
       });
     }
 
     return NextResponse.json(created);
   } catch (e: any) {
-    console.error('[POST /api/projects/[id]/tasks]', e);
+    console.error("[POST /api/projects/[id]/tasks]", e);
     return NextResponse.json(
-      { error: e?.message ?? 'Internal Server Error' },
+      { error: e?.message ?? "Internal Server Error" },
       { status: e?.status ?? 500 },
     );
   }
