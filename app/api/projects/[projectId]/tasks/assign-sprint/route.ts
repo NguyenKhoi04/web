@@ -4,13 +4,16 @@ import { prisma } from '@/lib/prisma';
 import { requireProjectRole } from '@/lib/authz';
 import { z } from 'zod';
 
+type Ctx = { params: Promise<{ projectId: string }> };
+
 const Schema = z.object({
   taskId: z.string(),
   sprintId: z.string().nullable(), // null = trả task về Backlog
 });
 
-export async function PATCH(req: Request, { params }: { params: { projectId: string } }) {
-  await requireProjectRole(params.projectId, 'MEMBER');
+export async function PATCH(req: Request, ctx: Ctx) {
+  const { projectId } = await ctx.params;
+  await requireProjectRole(projectId, 'MEMBER');
   const { taskId, sprintId } = Schema.parse(await req.json());
 
   const task = await prisma.task.update({
