@@ -38,7 +38,9 @@ export async function GET(req: Request, ctx: Ctx) {
         })
     ]);
 
-    if (!membership?.role) return false;
+    if (!membership?.role) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+}
     const isLead = ['OWNER','LEAD','MANAGER'].includes(membership.role);
     const isAssigned = !!taskAssignee;
 
@@ -106,7 +108,9 @@ export async function POST(req: Request, ctx: Ctx) {
         })
     ]);
 
-    if (!membership?.role) return false;
+    if (!membership?.role) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+}
 const isLead = ['OWNER','LEAD','MANAGER'].includes(membership.role);
     const isAssigned = !!taskAssignee;
 
