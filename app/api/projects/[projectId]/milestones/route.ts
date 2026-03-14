@@ -11,10 +11,7 @@ const CreateSchema = z.object({
   status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED"]).optional(),
 });
 
-export async function GET(
-  req: Request,
-  context: { params: { projectId: string } }
-) {
+export async function GET(req: Request, context: any) {
   try {
     const { projectId } = context.params;
 
@@ -29,9 +26,9 @@ export async function GET(
       orderBy: { dueDate: "asc" },
     });
 
-    const items = milestones.map((m) => {
+    const items = milestones.map((m: any) => {
       const totalTasks = m.tasks.length;
-      const completedTasks = m.tasks.filter((t) => t.status === "DONE").length;
+      const completedTasks = m.tasks.filter((t: any) => t.status === "DONE").length;
 
       const progress =
         totalTasks > 0
@@ -54,10 +51,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  req: Request,
-  context: { params: { projectId: string } }
-) {
+export async function POST(req: Request, context: any) {
   try {
     const { projectId } = context.params;
 
