@@ -3,19 +3,33 @@ import { prisma } from "@/lib/prisma";
 import { requireProjectRole } from "@/lib/authz";
 import { z } from "zod";
 
-const Q = z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() });
+const Q = z.object({
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional()
+});
 
-export async function GET(req: Request, { params }: { params: { projectId: string } }) {
-  await requireProjectRole(params.projectId, "VIEWER");
+export async function GET(req: Request, context: any) {
+  const { projectId } = context.params;
+
+  await requireProjectRole(projectId, "VIEWER");
+
   const { searchParams } = new URL(req.url);
-  const parsed = Q.parse({ from: searchParams.get("from") ?? undefined, to: searchParams.get("to") ?? undefined });
+
+  const parsed = Q.parse({
+    from: searchParams.get("from") ?? undefined,
+    to: searchParams.get("to") ?? undefined,
+  });
 
   const sprints = await prisma.sprint.findMany({
     where: {
-      projectId: params.projectId,
+      projectId,
       ...(parsed.from || parsed.to
-        ? { AND: [ parsed.from ? { endDate: { gte: parsed.from } } : {},
-                   parsed.to   ? { startDate: { lte: parsed.to } } : {} ] }
+        ? {
+            AND: [
+              parsed.from ? { endDate: { gte: parsed.from } } : {},
+              parsed.to ? { startDate: { lte: parsed.to } } : {},
+            ],
+          }
         : {}),
     },
     orderBy: { startDate: "asc" },
@@ -23,9 +37,14 @@ export async function GET(req: Request, { params }: { params: { projectId: strin
 
   const milestones = await prisma.milestone.findMany({
     where: {
-      projectId: params.projectId,
+      projectId,
       ...(parsed.from || parsed.to
-        ? { dueDate: { gte: parsed.from ?? new Date(0), lte: parsed.to ?? new Date("2999-12-31") } }
+        ? {
+            dueDate: {
+              gte: parsed.from ?? new Date(0),
+              lte: parsed.to ?? new Date("2999-12-31"),
+            },
+          }
         : {}),
     },
     orderBy: { dueDate: "asc" },
@@ -33,10 +52,14 @@ export async function GET(req: Request, { params }: { params: { projectId: strin
 
   const tasks = await prisma.task.findMany({
     where: {
-      projectId: params.projectId,
-      dueDate: parsed.from || parsed.to
-        ? { gte: parsed.from ?? new Date(0), lte: parsed.to ?? new Date("2999-12-31") }
-        : undefined,
+      projectId,
+      dueDate:
+        parsed.from || parsed.to
+          ? {
+              gte: parsed.from ?? new Date(0),
+              lte: parsed.to ?? new Date("2999-12-31"),
+            }
+          : undefined,
     },
     select: { id: true, title: true, dueDate: true, status: true },
     orderBy: { dueDate: "asc" },
@@ -44,3 +67,52 @@ export async function GET(req: Request, { params }: { params: { projectId: strin
 
   return NextResponse.json({ sprints, milestones, tasks });
 }
+
+
+
+// import { NextResponse } from "next/server";
+// import { prisma } from "@/lib/prisma";
+// import { requireProjectRole } from "@/lib/authz";
+// import { z } from "zod";
+
+// const Q = z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() });
+
+// export async function GET(req: Request, { params }: { params: { projectId: string } }) {
+//   await requireProjectRole(params.projectId, "VIEWER");
+//   const { searchParams } = new URL(req.url);
+//   const parsed = Q.parse({ from: searchParams.get("from") ?? undefined, to: searchParams.get("to") ?? undefined });
+
+//   const sprints = await prisma.sprint.findMany({
+//     where: {
+//       projectId: params.projectId,
+//       ...(parsed.from || parsed.to
+//         ? { AND: [ parsed.from ? { endDate: { gte: parsed.from } } : {},
+//                    parsed.to   ? { startDate: { lte: parsed.to } } : {} ] }
+//         : {}),
+//     },
+//     orderBy: { startDate: "asc" },
+//   });
+
+//   const milestones = await prisma.milestone.findMany({
+//     where: {
+//       projectId: params.projectId,
+//       ...(parsed.from || parsed.to
+//         ? { dueDate: { gte: parsed.from ?? new Date(0), lte: parsed.to ?? new Date("2999-12-31") } }
+//         : {}),
+//     },
+//     orderBy: { dueDate: "asc" },
+//   });
+
+//   const tasks = await prisma.task.findMany({
+//     where: {
+//       projectId: params.projectId,
+//       dueDate: parsed.from || parsed.to
+//         ? { gte: parsed.from ?? new Date(0), lte: parsed.to ?? new Date("2999-12-31") }
+//         : undefined,
+//     },
+//     select: { id: true, title: true, dueDate: true, status: true },
+//     orderBy: { dueDate: "asc" },
+//   });
+
+//   return NextResponse.json({ sprints, milestones, tasks });
+// }
