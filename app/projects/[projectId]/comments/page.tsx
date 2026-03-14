@@ -39,7 +39,10 @@ export default async function ProjectCommentsPage({
     select: { role: true },
   });
 
-  const isLead = membership?.role === 'OWNER' || membership?.role === 'LEAD' || membership?.role === 'MANAGER';
+  const isLead =
+    membership?.role === 'OWNER' as any ||
+    membership?.role === 'LEAD' as any ||
+    membership?.role === 'MANAGER' as any;
 
   const tasks = await prisma.task.findMany({
     where: {
