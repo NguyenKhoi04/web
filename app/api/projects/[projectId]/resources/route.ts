@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 
-export async function GET(
-  req: NextRequest,
-  context: { params: { projectId: string } }
-) {
+export async function GET(req: NextRequest, context: any) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -61,12 +58,8 @@ export async function GET(
         },
         include: {
           resource: true,
-          task: {
-            select: { title: true, id: true },
-          },
-          addedBy: {
-            select: { name: true, email: true },
-          },
+          task: { select: { title: true, id: true } },
+          addedBy: { select: { name: true, email: true } },
         },
         orderBy: { addedAt: "desc" },
       });
