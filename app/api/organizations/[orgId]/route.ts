@@ -5,9 +5,9 @@ import { requireUser } from "@/lib/authz";
 // PUT: Update organization (Name)
 export async function PUT(
     req: Request,
-    { params }: { params: { [key: string]: string | string[] } }
+    { params }: { params: { orgId: string } }
 ) {
-    const orgId = params.orgId as string;
+    const { orgId } = params;
     try {
         const user = await requireUser();
         const body = await req.json();
@@ -42,9 +42,9 @@ export async function PUT(
 // DELETE: Delete organization
 export async function DELETE(
     req: Request,
-    { params }: { params: { [key: string]: string | string[] } }
+    { params }: { params: { orgId: string } }
 ) {
-    const orgId = params.orgId as string;
+    const { orgId } = params;
     try {
         const user = await requireUser();
 
