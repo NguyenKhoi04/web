@@ -13,7 +13,7 @@ export async function PUT(
   await requireProjectRole(projectId, 'MANAGER');
   const s = await prisma.sprint.update({
     where: { id: sprintId },
-    data: { status: 'closed' },
+    data: { status: 'CLOSED' },
   });
   return NextResponse.json(s);
 }
