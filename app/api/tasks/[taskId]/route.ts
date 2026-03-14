@@ -4,9 +4,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";        // chỉnh path cho đúng dự án bạn
 import { prisma } from "@/lib/prisma"; // hoặc "@/lib/prisma" nếu bạn dùng file khác
 
+type Ctx = { params: Promise<{ taskId: string }> };
+
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ taskId: string }> },
+  ctx: Ctx,
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -49,14 +51,14 @@ export async function GET(
 // Optional: POST để log thủ công (giúp bạn test nhanh)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { taskId: string } },
+  ctx: Ctx,
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { taskId } = params;
+  const { taskId } = await ctx.params;
   const body = await req.json();
 
   const { type, message, meta } = body as {
