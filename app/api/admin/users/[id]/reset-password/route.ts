@@ -3,10 +3,7 @@ import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendMail } from '@/lib/mail';
 
-export async function POST(
-  req: Request,
-  context: { params: { id: string } }
-) {
+export async function POST(req: Request, context: any) {
   const me = await requireAdmin();
   const { id } = context.params;
 
