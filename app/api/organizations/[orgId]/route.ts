@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 
+type Ctx = { params: Promise<{ orgId: string }> };
+
 // PUT: Update organization (Name)
 export async function PUT(
     req: Request,
-    { params }: { params: { orgId: string } }
+    ctx: Ctx
 ) {
-    const { orgId } = params;
+    const { orgId } = await ctx.params;
     try {
         const user = await requireUser();
         const body = await req.json();
@@ -42,9 +44,9 @@ export async function PUT(
 // DELETE: Delete organization
 export async function DELETE(
     req: Request,
-    { params }: { params: { orgId: string } }
+    ctx: Ctx
 ) {
-    const { orgId } = params;
+    const { orgId } = await ctx.params;
     try {
         const user = await requireUser();
 
