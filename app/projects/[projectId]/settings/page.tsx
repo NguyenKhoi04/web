@@ -14,16 +14,16 @@ import ProjectMembersSettings from "./ProjectMembersSettings";
 import { requireUser } from "@/lib/authz";
 
 /** ===== Status config (slug lưu DB, label hiển thị) ===== */
-export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'done';
+type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'done';
 
-export const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
+const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'planning', label: 'Đang lên kế hoạch' },
   { value: 'in_progress', label: 'Đang triển khai' },
   { value: 'review', label: 'Đang đánh giá / nghiệm thu' },
   { value: 'done', label: 'Hoàn thành' },
 ];
 
-export const DEFAULT_PROJECT_STATUS: ProjectStatus = 'planning';
+const DEFAULT_PROJECT_STATUS: ProjectStatus = 'planning';
 
 /** ===== Zod schema ===== */
 const UpdateSchema = z.object({
