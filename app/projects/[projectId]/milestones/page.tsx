@@ -1,11 +1,15 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { notFound } from 'next/navigation';
-import MilestoneCreateButton from './MilestoneCreateButton';
-import MilestoneActions from '@/app/components/MilestoneActions';
+import { notFound } from "next/navigation";
+import MilestoneCreateButton from "./MilestoneCreateButton";
+import MilestoneActions from "@/app/components/MilestoneActions";
 
-export default async function ProjectMilestonesPage({ params }: { params: Promise<{ projectId: string }> }) {
+export default async function ProjectMilestonesPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
   const { projectId } = await params;
   const session = await getServerSession(authOptions);
 
@@ -19,9 +23,9 @@ export default async function ProjectMilestonesPage({ params }: { params: Promis
   let canManage = false;
   if (session?.user?.id) {
     const member = await prisma.projectMember.findFirst({
-      where: { projectId, userId: session.user.id }
+      where: { projectId, userId: session.user.id },
     });
-    if (member && (member.role === 'MANAGER' || member.role === 'LEAD')) {
+    if (member && (member.role === "MANAGER" || member.role === "LEAD")) {
       canManage = true;
     }
   }
@@ -31,23 +35,24 @@ export default async function ProjectMilestonesPage({ params }: { params: Promis
   // DB approach:
   const milestones = await prisma.milestone.findMany({
     where: { projectId },
-    orderBy: { dueDate: 'asc' },
+    orderBy: { dueDate: "asc" },
     include: {
       tasks: { select: { status: true } },
-      sprints: { select: { id: true, name: true } }
-    }
+      sprints: { select: { id: true, name: true } },
+    },
   });
 
-  const items = milestones.map(m => {
+  const items = milestones.map((m) => {
     const total = m.tasks.length;
-    const done = m.tasks.filter(t => t.status === 'DONE').length;
-    const progress = total > 0 ? Math.round(done / total * 100) : (m.progress || 0);
+    const done = m.tasks.filter((t) => t.status === "DONE").length;
+    const progress =
+      total > 0 ? Math.round((done / total) * 100) : m.progress || 0;
 
     return {
       ...m,
       progress,
       done,
-      total
+      total,
     };
   });
 
@@ -56,10 +61,19 @@ export default async function ProjectMilestonesPage({ params }: { params: Promis
       <div className="mx-auto max-w-6xl p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Milestones — {project.key}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Milestones — {project.key}
+            </h1>
             <p className="text-gray-600">Các cột mốc quan trọng của dự án</p>
           </div>
-          {canManage && <MilestoneCreateButton projectId={projectId} />}
+          {canManage && (
+            <MilestoneCreateButton
+              projectId={projectId}
+              open={false}
+              onClose={() => {}}
+              onCreated={() => {}}
+            />
+          )}
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white">
@@ -75,14 +89,18 @@ export default async function ProjectMilestonesPage({ params }: { params: Promis
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {items.map(m => (
+              {items.map((m) => (
                 <tr key={m.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="font-medium text-gray-900">{m.title}</div>
-                    {m.description && <div className="text-sm text-gray-500 truncate max-w-xs">{m.description}</div>}
+                    {m.description && (
+                      <div className="text-sm text-gray-500 truncate max-w-xs">
+                        {m.description}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-gray-700">
-                    {new Date(m.dueDate).toLocaleDateString('vi-VN')}
+                    {new Date(m.dueDate).toLocaleDateString("vi-VN")}
                     {/* If Completed, show actual finish date? Stored in updatedAt if status changed to completed? Or separate field? 
                             User: "Ngày hoàn thành thực tế (nếu completed)". 
                             Currently we don't store exact completion date field. 
@@ -92,24 +110,44 @@ export default async function ProjectMilestonesPage({ params }: { params: Promis
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-[100px]">
-                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${m.progress}%` }}></div>
+                        <div
+                          className="bg-blue-600 h-2.5 rounded-full"
+                          style={{ width: `${m.progress}%` }}
+                        ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-700">{m.progress}%</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {m.progress}%
+                      </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{m.done}/{m.total} tasks</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {m.done}/{m.total} tasks
+                    </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium 
-                            ${m.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                        m.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'}`}>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium 
+                            ${
+                              m.status === "COMPLETED"
+                                ? "bg-green-100 text-green-800"
+                                : m.status === "IN_PROGRESS"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                            }`}
+                    >
                       {m.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {m.sprints.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {m.sprints.map(s => <span key={s.id} className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs">{s.name}</span>)}
+                        {m.sprints.map((s) => (
+                          <span
+                            key={s.id}
+                            className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs"
+                          >
+                            {s.name}
+                          </span>
+                        ))}
                       </div>
                     ) : (
                       <span className="text-gray-400 italic">--</span>
@@ -117,13 +155,22 @@ export default async function ProjectMilestonesPage({ params }: { params: Promis
                     {/* Also tasks count? */}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <MilestoneActions projectId={projectId} milestone={m} canManage={canManage} />
+                    <MilestoneActions
+                      projectId={projectId}
+                      milestone={m}
+                      canManage={canManage}
+                    />
                   </td>
                 </tr>
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-gray-500">Chưa có milestone nào.</td>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-10 text-center text-gray-500"
+                  >
+                    Chưa có milestone nào.
+                  </td>
                 </tr>
               )}
             </tbody>
