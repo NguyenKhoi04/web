@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -67,7 +67,7 @@ model User {
 
   @@index([globalRole])
   @@index([status])
-  @@index([suspendedById], map: "User_suspendedById_fkey")
+  @@index([suspendedById])
 }
 
 model Account {
@@ -86,7 +86,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@index([userId], map: "Account_userId_fkey")
+  @@index([userId])
 }
 
 model Session {
@@ -96,7 +96,7 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId], map: "Session_userId_fkey")
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -167,8 +167,8 @@ model Project {
   tasks               Task[]
 
   @@index([organizationId])
-  @@index([createdById], map: "Project_createdById_fkey")
-  @@index([leadId], map: "Project_leadId_fkey")
+  @@index([createdById])
+  @@index([leadId])
 }
 
 model ProjectMember {
@@ -240,8 +240,8 @@ model Task {
   @@index([columnId, order])
   @@index([sprintId])
   @@index([milestoneId])
-  @@index([createdById], map: "Task_createdById_fkey")
-  @@index([updatedById], map: "Task_updatedById_fkey")
+  @@index([createdById])
+  @@index([updatedById])
   @@index([followerId])
 }
 
@@ -276,7 +276,7 @@ model TaskTag {
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@id([taskId, tagId])
-  @@index([tagId], map: "TaskTag_tagId_fkey")
+  @@index([tagId])
 }
 
 model TaskComment {
@@ -293,9 +293,9 @@ model TaskComment {
   replies     TaskComment[]    @relation("CommentThread")
   task        Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@index([authorId], map: "TaskComment_authorId_fkey")
-  @@index([parentId], map: "TaskComment_parentId_fkey")
-  @@index([taskId], map: "TaskComment_taskId_fkey")
+  @@index([authorId])
+  @@index([parentId])
+  @@index([taskId])
 }
 
 model ProjectComment {
@@ -315,7 +315,7 @@ model ProjectComment {
 
   @@index([projectId, createdAt])
   @@index([authorId, createdAt])
-  @@index([parentId], map: "ProjectComment_parentId_fkey")
+  @@index([parentId])
 }
 
 model CommentMention {
@@ -346,9 +346,9 @@ model TaskAttachment {
   task          Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
-  @@index([addedById], map: "TaskAttachment_addedById_fkey")
-  @@index([resourceId], map: "TaskAttachment_resourceId_fkey")
-  @@index([taskCommentId], map: "TaskAttachment_taskCommentId_fkey")
+  @@index([addedById])
+  @@index([resourceId])
+  @@index([taskCommentId])
 }
 
 model TaskDependency {
@@ -382,7 +382,7 @@ model Sprint {
 
   @@index([projectId, startDate, endDate])
   @@index([projectId, status])
-  @@index([createdById], map: "Sprint_createdById_fkey")
+  @@index([createdById])
   @@index([milestoneId])
 }
 
@@ -404,7 +404,7 @@ model Milestone {
   tasks       Task[] // Tasks directly linked to milestone
 
   @@index([projectId, dueDate])
-  @@index([ownerId], map: "Milestone_ownerId_fkey")
+  @@index([ownerId])
 }
 
 model CalendarEvent {
@@ -424,8 +424,8 @@ model CalendarEvent {
   task        Task?      @relation(fields: [taskId], references: [id])
 
   @@index([projectId, start, end])
-  @@index([milestoneId], map: "CalendarEvent_milestoneId_fkey")
-  @@index([taskId], map: "CalendarEvent_taskId_fkey")
+  @@index([milestoneId])
+  @@index([taskId])
 }
 
 model Resource {
@@ -445,7 +445,7 @@ model Resource {
   attachments TaskAttachment[]
 
   @@index([projectId, type])
-  @@index([createdById], map: "Resource_createdById_fkey")
+  @@index([createdById])
 }
 
 model Notification {
@@ -462,8 +462,8 @@ model Notification {
   task        Task?            @relation(fields: [taskId], references: [id])
 
   @@index([recipientId, readAt])
-  @@index([projectId], map: "Notification_projectId_fkey")
-  @@index([taskId], map: "Notification_taskId_fkey")
+  @@index([projectId])
+  @@index([taskId])
 }
 
 model NotificationSetting {
@@ -478,7 +478,7 @@ model NotificationSetting {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
-  @@index([projectId], map: "NotificationSetting_projectId_fkey")
+  @@index([projectId])
 }
 
 model TimeEntry {
@@ -495,7 +495,7 @@ model TimeEntry {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([taskId, userId, startedAt])
-  @@index([userId], map: "TimeEntry_userId_fkey")
+  @@index([userId])
 }
 
 model DailyReport {
@@ -512,7 +512,7 @@ model DailyReport {
 
   @@unique([projectId, authorId, date])
   @@index([projectId, date])
-  @@index([authorId], map: "DailyReport_authorId_fkey")
+  @@index([authorId])
 }
 
 model ActivityLog {
@@ -530,7 +530,7 @@ model ActivityLog {
 
   @@index([projectId, createdAt])
   @@index([taskId, createdAt])
-  @@index([actorId], map: "ActivityLog_actorId_fkey")
+  @@index([actorId])
 }
 
 model SystemSetting {
@@ -542,7 +542,7 @@ model SystemSetting {
   updatedAt   DateTime @default(now())
   updatedBy   User?    @relation(fields: [updatedById], references: [id])
 
-  @@index([updatedById], map: "SystemSetting_updatedById_fkey")
+  @@index([updatedById])
 }
 
 model Integration {
@@ -559,8 +559,8 @@ model Integration {
   updatedBy   User?               @relation("IntegrationUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([provider, enabled])
-  @@index([createdById], map: "Integration_createdById_fkey")
-  @@index([updatedById], map: "Integration_updatedById_fkey")
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model AuditLog {
@@ -577,7 +577,7 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
-  @@index([actorId], map: "AuditLog_actorId_fkey")
+  @@index([actorId])
 }
 
 model BackupSnapshot {
@@ -595,8 +595,8 @@ model BackupSnapshot {
   startedBy    User?           @relation("BackupStartedBy", fields: [startedById], references: [id])
 
   @@index([status, startedAt])
-  @@index([finishedById], map: "BackupSnapshot_finishedById_fkey")
-  @@index([startedById], map: "BackupSnapshot_startedById_fkey")
+  @@index([finishedById])
+  @@index([startedById])
 }
 
 model ProjectInvite {
@@ -616,7 +616,7 @@ model ProjectInvite {
 
   @@index([projectId, status])
   @@index([recipientId, status])
-  @@index([invitedById], map: "ProjectInvite_invitedById_fkey")
+  @@index([invitedById])
 }
 
 model OrganizationInvite {
@@ -636,7 +636,7 @@ model OrganizationInvite {
 
   @@index([organizationId, status])
   @@index([recipientId, status])
-  @@index([invitedById], map: "OrganizationInvite_invitedById_fkey")
+  @@index([invitedById])
 }
 
 model HelpArticle {
@@ -678,7 +678,7 @@ model ChatMessage {
   createdAt      DateTime    @default(now())
   session        ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  @@index([sessionId], map: "ChatMessage_sessionId_fkey")
+  @@index([sessionId])
 }
 
 model ChatFeedback {
@@ -690,7 +690,7 @@ model ChatFeedback {
   createdAt DateTime    @default(now())
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  @@index([sessionId], map: "ChatFeedback_sessionId_fkey")
+  @@index([sessionId])
 }
 
 model ProjectActivity {
@@ -705,7 +705,7 @@ model ProjectActivity {
   project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, createdAt(sort: Desc)])
-  @@index([actorId], map: "ProjectActivity_actorId_fkey")
+  @@index([actorId])
 }
 
 model TaskActivity {
@@ -720,7 +720,7 @@ model TaskActivity {
   task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId, createdAt(sort: Desc)])
-  @@index([actorId], map: "TaskActivity_actorId_fkey")
+  @@index([actorId])
 }
 
 enum OrgRole {
