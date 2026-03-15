@@ -20,7 +20,7 @@ const Body = z.object({
 /* --------------------------- GET: list comments --------------------------- */
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ projectId: string }> }
+  { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
 
@@ -65,7 +65,7 @@ export async function GET(
 /* -------------------------- POST: create comment -------------------------- */
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ projectId: string }> }
+  { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
 
@@ -90,83 +90,85 @@ export async function POST(
     }
   }
 
-  const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    // Create comment
-    const c = await tx.projectComment.create({
-      data: {
-        projectId,
-        authorId: me.id,
-        content,
-        parentId: parentId ?? null,
-        attachments: attachments as Prisma.InputJsonValue,
-      },
-    });
-
-    /* ----------------------- Mentions (@user) ----------------------- */
-    const uniq = Array.from(
-      new Set(mentions.filter((u: string) => u !== me.id))
-    );
-
-    if (uniq.length) {
-      const project = await tx.project.findUnique({
-        where: { id: projectId },
-        select: { name: true },
+  const created = await prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      // Create comment
+      const c = await tx.projectComment.create({
+        data: {
+          projectId,
+          authorId: me.id,
+          content,
+          parentId: parentId ?? null,
+          attachments: attachments as Prisma.InputJsonValue,
+        },
       });
 
-      await tx.commentMention.createMany({
-        data: uniq.map((uid: string) => ({
-          projectCommentId: c.id,
-          userId: uid,
-        })),
-        skipDuplicates: true,
-      });
-
-      await tx.notification.createMany({
-        data: uniq.map((uid: string) => ({
-          recipientId: uid,
-          type: $Enums.NotificationType.PROJECT_COMMENT_MENTION,
-          data: {
-            projectId,
-            commentId: c.id,
-            actorName: me.name || me.email,
-            projectName: project?.name || "Dự án",
-          } as Prisma.InputJsonValue,
-        })),
-      });
-    }
-
-    /* -------------------- Notify reply participants -------------------- */
-    if (parentId) {
-      const others = await tx.projectComment.findMany({
-        where: { parentId },
-        select: { authorId: true },
-        distinct: ["authorId"],
-      });
-
-      const recipients = Array.from(
-        new Set(
-          others
-            .map((o: (typeof others)[number]) => o.authorId)
-            .filter((id): id is string => !!id && id !== me.id)
-        )
+      /* ----------------------- Mentions (@user) ----------------------- */
+      const uniq = Array.from(
+        new Set(mentions.filter((u: string) => u !== me.id)),
       );
 
-      if (recipients.length) {
+      if (uniq.length) {
+        const project = await tx.project.findUnique({
+          where: { id: projectId },
+          select: { name: true },
+        });
+
+        await tx.commentMention.createMany({
+          data: uniq.map((uid: string) => ({
+            projectCommentId: c.id,
+            userId: uid,
+          })),
+          skipDuplicates: true,
+        });
+
         await tx.notification.createMany({
-          data: recipients.map((uid: string) => ({
+          data: uniq.map((uid: string) => ({
             recipientId: uid,
-            type: $Enums.NotificationType.PROJECT_COMMENT_REPLY,
+            type: $Enums.NotificationType.PROJECT_COMMENT_MENTION,
             data: {
               projectId,
-              commentId: parentId,
+              commentId: c.id,
+              actorName: me.name || me.email,
+              projectName: project?.name || "Dự án",
             } as Prisma.InputJsonValue,
           })),
         });
       }
-    }
 
-    return c;
-  });
+      /* -------------------- Notify reply participants -------------------- */
+      if (parentId) {
+        const others = await tx.projectComment.findMany({
+          where: { parentId },
+          select: { authorId: true },
+          distinct: ["authorId"],
+        });
+
+        const recipients = Array.from(
+          new Set(
+            others
+              .map((o: (typeof others)[number]) => o.authorId)
+              .filter((id): id is string => !!id && id !== me.id),
+          ),
+        );
+
+        if (recipients.length) {
+          await tx.notification.createMany({
+            data: recipients.map((uid: string) => ({
+              recipientId: uid,
+              type: $Enums.NotificationType.PROJECT_COMMENT_REPLY,
+              data: {
+                projectId,
+                commentId: parentId,
+              } as Prisma.InputJsonValue,
+            })),
+          });
+        }
+      }
+
+      return c;
+    },
+  );
 
   return NextResponse.json(created, { status: 201 });
 }
