@@ -14,9 +14,9 @@ const Update = z.object({
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { projectId: string; sprintId: string } },
+  { params }: { params: Promise<{ projectId: string; sprintId: string }> }
 ) {
-  const { projectId, sprintId } = params;
+  const { projectId, sprintId } = await params;
   await requireProjectRole(projectId, "LEAD");
   const data = Update.parse(await req.json());
   const s = await prisma.sprint.update({
