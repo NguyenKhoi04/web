@@ -15,12 +15,14 @@ export async function GET() {
     where: { role: 'OWNER' },
     select: { organizationId: true, user: { select: { email: true } } }
   });
-  const ownerMap = new Map(owners.map(o => [o.organizationId, o.user.email]));
+  const ownerMap = new Map(
+  owners.map((o: (typeof owners)[number]) => [o.organizationId, o.user.email])
+);
 
   // lấy status từ SystemSetting
   const keys = orgs.map(o => `ORG_STATUS_${o.id}`);
   const settings = await prisma.systemSetting.findMany({ where: { key: { in: keys } } });
-  const statusMap = new Map(settings.map(s => [s.key.replace('ORG_STATUS_',''), (s.value as any)?.status ?? 'ACTIVE']));
+  const statusMap = new Map(settings.map((s: (typeof settings)[number]) => [s.key.replace('ORG_STATUS_',''), (s.value as any)?.status ?? 'ACTIVE']));
 
   const rows = orgs.map(o => ({
     id: o.id,
