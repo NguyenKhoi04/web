@@ -26,7 +26,7 @@ export async function GET(
       orderBy: { joinedAt: "desc" },
     });
 
-    const mapped: MemberItem[] = rows.map((r) => ({
+    const mapped: MemberItem[] = rows.map((r: (typeof rows)[number]) => ({
       id: r.user.id,
       name: r.user.name,
       email: r.user.email!,
