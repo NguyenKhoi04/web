@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, context: any) {
     }
 
     const resources = [
-      ...projectComments.flatMap((c) => {
+      ...projectComments.flatMap((c: (typeof projectComments)[number]) => {
         const atts = Array.isArray(c.attachments) ? c.attachments : [];
 
         return atts.map((att: any) => ({
