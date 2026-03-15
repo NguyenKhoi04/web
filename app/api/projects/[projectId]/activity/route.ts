@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   });
 
   return NextResponse.json({
-    items: activities.map((a) => ({
+    items: activities.map((a: (typeof activities)[number]) => ({
       id: a.id,
       type: a.type,       // enum ActivityType
       message: a.message,
