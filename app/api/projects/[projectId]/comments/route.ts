@@ -148,7 +148,10 @@ export async function POST(
           new Set(
             others
               .map((o: (typeof others)[number]) => o.authorId)
-              .filter((id): id is string => !!id && id !== me.id),
+              .filter(
+                (id: string | null | undefined): id is string =>
+                  typeof id === "string" && id !== me.id,
+              ),
           ),
         );
 
