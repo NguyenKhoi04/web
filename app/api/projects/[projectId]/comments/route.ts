@@ -160,9 +160,9 @@ export async function POST(
            others
             .map((o: { authorId: string | null }) => o.authorId)
               .filter(
-                (id): id is string =>
+                (id: string | null): id is string =>
                   typeof id === "string" && id !== me.id,
-              ),
+              )
           ),
         );
 
