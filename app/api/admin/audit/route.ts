@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     },
   });
 
-  const rows = logs.map((l) => ({
+ const rows = logs.map((l: (typeof logs)[number]) => ({
     id: l.id,
     ts: l.createdAt.toISOString(),
     actor: l.actor?.email ?? "(unknown)",
