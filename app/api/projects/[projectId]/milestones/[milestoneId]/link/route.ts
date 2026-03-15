@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireProjectRole } from "@/lib/authz";
 import { z } from "zod";
+import { prisma, Prisma } from "@/lib/prisma";
 
 const LinkSchema = z.object({
   sprintIds: z.array(z.string()).optional(), // List of sprints to ADD
@@ -21,7 +21,7 @@ export async function POST(
     const body = await req.json();
     const data = LinkSchema.parse(body);
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (data.sprintIds && data.sprintIds.length > 0) {
         await tx.sprint.updateMany({
           where: { id: { in: data.sprintIds }, projectId },
