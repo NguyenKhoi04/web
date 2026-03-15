@@ -6,7 +6,6 @@ import { z } from "zod";
 import { Project } from "@/app/generated/prisma/wasm";
 // Removed unused and non-existent type imports from "@prisma/client"
 
-
 const CreateProject = z.object({
   name: z.string().min(1),
   key: z
@@ -81,23 +80,25 @@ export async function GET(req: Request) {
       ]),
     );
 
-    const items = projects.map((p: Project & { _count: { members: number } }) => {
-      const total = Number(totalMap.get(p.id) ?? 0);
-      const done = Number(doneMap.get(p.id) ?? 0);
-      const progress = total ? Math.round((done / total) * 100) : 0;
-      return {
-        id: p.id,
-        key: p.key,
-        name: p.name,
-        description: p.description,
-        createdAt: p.createdAt.toISOString(),
-        membersCount: p._count.members,
-        totalTasks: total,
-        doneTasks: done,
-        progress,
-        status: p.status,
-      };
-    });
+    const items = projects.map(
+      (p: Project & { _count: { members: number } }) => {
+        const total = Number(totalMap.get(p.id) ?? 0);
+        const done = Number(doneMap.get(p.id) ?? 0);
+        const progress = total ? Math.round((done / total) * 100) : 0;
+        return {
+          id: p.id,
+          key: p.key,
+          name: p.name,
+          description: p.description,
+          createdAt: p.createdAt.toISOString(),
+          membersCount: p._count.members,
+          totalTasks: total,
+          doneTasks: done,
+          progress,
+          status: p.status,
+        };
+      },
+    );
 
     return NextResponse.json({ items });
   } catch (e: unknown) {
@@ -134,7 +135,7 @@ export async function POST(req: Request) {
     const orgId = await ensurePersonalOrg(user.id);
     const key = parsed.key.toUpperCase();
 
-    const project = await prisma.$transaction(async (tx: typeof prisma) => {
+    const project = await prisma.$transaction(async (tx) => {
       const p = await tx.project.create({
         data: {
           organizationId: orgId,

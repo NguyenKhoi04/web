@@ -27,10 +27,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
-  { params }: { params: { projectId: string; sprintId: string } },
+  req: Request,
+  { params }: { params: Promise<{ projectId: string; sprintId: string }> }
 ) {
-  const { projectId, sprintId } = params;
+  const { projectId, sprintId } = await params;
+
   await requireProjectRole(projectId, "LEAD");
   await prisma.sprint.delete({ where: { id: sprintId } });
   return NextResponse.json({ ok: true });
