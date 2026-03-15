@@ -80,9 +80,9 @@ export async function GET(
 
   // Transform items to flatten attachments structure if needed matches existing frontend expectations
   const formattedItems = items.map((item: (typeof items)[number]) => ({
-    ...item,
-    attachments: item.attachments.map((a) => a.resource),
-  }));
+  ...item,
+  attachments: item.attachments.map((a: any) => a.resource),
+}));
 
   return NextResponse.json({
     items: formattedItems,
