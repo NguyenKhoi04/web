@@ -16,7 +16,7 @@ const Body = z.object({
   attachments: z.array(z.any()).optional(),
 });
 
-type Ctx = { params: { projectId: string; taskId: string } };
+// type Ctx = { params: { projectId: string; taskId: string } };
 
 /* --------------------------- GET: list comments --------------------------- */
 export async function GET(
@@ -93,8 +93,11 @@ export async function GET(
 }
 
 /* -------------------------- POST: create comment -------------------------- */
-export async function POST(req: Request, ctx: Ctx) {
-  const { projectId, taskId } = ctx.params;
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string; taskId: string }> }
+) {
+  const { projectId, taskId } = await params;
 
   const me = await requireUser();
   await requireProjectRole(projectId, "MEMBER");
