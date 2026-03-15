@@ -99,7 +99,7 @@ export async function POST(
           authorId: me.id,
           content,
           parentId: parentId ?? null,
-          attachments: attachments as Prisma.InputJsonValue,
+          attachments: attachments as any,
         },
       });
 
@@ -131,7 +131,7 @@ export async function POST(
               commentId: c.id,
               actorName: me.name || me.email,
               projectName: project?.name || "Dự án",
-            } as Prisma.InputJsonValue,
+            } as any,
           })),
         });
       }
@@ -160,7 +160,7 @@ export async function POST(
               data: {
                 projectId,
                 commentId: parentId,
-              } as Prisma.InputJsonValue,
+              } as any,
             })),
           });
         }
