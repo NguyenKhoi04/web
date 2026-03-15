@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 import { z } from "zod";
-import { Project } from "@prisma/client";
+// import { Project } from "@prisma/client";
 // import { Project } from "@/app/generated/prisma/wasm";
 // Removed unused and non-existent type imports from "@prisma/client"
 
@@ -51,9 +51,7 @@ export async function GET(req: Request) {
     }
 
     // Calculate progress by task (batch to avoid N+1)
-    const ids = projects.map(
-      (p: Project & { _count: { members: number } }) => p.id,
-    );
+    const ids = projects.map((p) => p.id);
     if (ids.length === 0) return NextResponse.json({ items: [] });
 
     const totals = await prisma.task.groupBy({
@@ -81,8 +79,7 @@ export async function GET(req: Request) {
       ]),
     );
 
-    const items = projects.map(
-      (p: Project & { _count: { members: number } }) => {
+   const items = projects.map((p: any) => {
         const total = Number(totalMap.get(p.id) ?? 0);
         const done = Number(doneMap.get(p.id) ?? 0);
         const progress = total ? Math.round((done / total) * 100) : 0;
