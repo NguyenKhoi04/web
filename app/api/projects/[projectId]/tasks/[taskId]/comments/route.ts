@@ -148,7 +148,7 @@ export async function POST(
     }
   }
 
-  const created = await prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // 1. Create Comment
     const c = await tx.taskComment.create({
       data: {
