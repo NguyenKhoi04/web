@@ -157,8 +157,8 @@ export async function POST(
 
         const recipients: string[] = Array.from(
           new Set(
-            others
-              .map((o) => o.authorId)
+           others
+            .map((o: { authorId: string | null }) => o.authorId)
               .filter(
                 (id): id is string =>
                   typeof id === "string" && id !== me.id,
