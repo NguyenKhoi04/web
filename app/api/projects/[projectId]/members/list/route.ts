@@ -20,7 +20,7 @@ export async function GET(
     });
 
     const items = rows
-      .map((r) => ({
+      .map((r: (typeof rows)[number]) => ({
         id: r.user.id,
         name: r.user.name,
         email: r.user.email!,
