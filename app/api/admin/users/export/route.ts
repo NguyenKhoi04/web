@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   await requireAdmin();
+
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true, status: true, globalRole: true, lastLoginAt: true },
     orderBy: { createdAt: 'desc' },
@@ -11,11 +12,19 @@ export async function GET() {
 
   const rows = [
     ['id','name','email','status','globalRole','lastLoginAt'],
-    ...users.map(u => [
-      u.id, u.name ?? '', u.email, u.status, u.globalRole, u.lastLoginAt?.toISOString() ?? ''
+    ...users.map((u: (typeof users)[number]) => [
+      u.id,
+      u.name ?? '',
+      u.email,
+      u.status,
+      u.globalRole,
+      u.lastLoginAt?.toISOString() ?? ''
     ])
   ];
-  const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+
+  const csv = rows
+    .map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(','))
+    .join('\r\n');
 
   return new Response(csv, {
     headers: {
