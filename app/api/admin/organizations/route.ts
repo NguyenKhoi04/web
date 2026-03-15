@@ -15,20 +15,30 @@ export async function GET() {
     where: { role: 'OWNER' },
     select: { organizationId: true, user: { select: { email: true } } }
   });
+
   const ownerMap = new Map(
-  owners.map((o: (typeof owners)[number]) => [o.organizationId, o.user.email])
-);
+    owners.map((o: (typeof owners)[number]) => [o.organizationId, o.user.email])
+  );
 
   // lấy status từ SystemSetting
-  const keys = orgs.map(o => `ORG_STATUS_${o.id}`);
-  const settings = await prisma.systemSetting.findMany({ where: { key: { in: keys } } });
-  const statusMap = new Map(settings.map((s: (typeof settings)[number]) => [s.key.replace('ORG_STATUS_',''), (s.value as any)?.status ?? 'ACTIVE']));
+  const keys = orgs.map((o: (typeof orgs)[number]) => `ORG_STATUS_${o.id}`);
 
-  const rows = orgs.map(o => ({
+  const settings = await prisma.systemSetting.findMany({
+    where: { key: { in: keys } }
+  });
+
+  const statusMap = new Map(
+    settings.map((s: (typeof settings)[number]) => [
+      s.key.replace('ORG_STATUS_', ''),
+      (s.value as any)?.status ?? 'ACTIVE'
+    ])
+  );
+
+  const rows = orgs.map((o: (typeof orgs)[number]) => ({
     id: o.id,
     name: o.name,
     owner: ownerMap.get(o.id) ?? '',
-    status: (statusMap.get(o.id) ?? 'ACTIVE') as 'PENDING'|'ACTIVE'|'PAUSED',
+    status: (statusMap.get(o.id) ?? 'ACTIVE') as 'PENDING' | 'ACTIVE' | 'PAUSED',
   }));
 
   return json(rows);
