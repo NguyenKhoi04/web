@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 import { z } from "zod";
-import { Project } from "@/app/generated/prisma/wasm";
+import { Project } from "@prisma/client";
+// import { Project } from "@/app/generated/prisma/wasm";
 // Removed unused and non-existent type imports from "@prisma/client"
 
 const CreateProject = z.object({
