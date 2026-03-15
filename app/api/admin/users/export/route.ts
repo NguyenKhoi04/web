@@ -23,8 +23,8 @@ export async function GET() {
   ];
 
   const csv = rows
-    .map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(','))
-    .join('\r\n');
+  .map(r => r.map((x: string | number) => `"${String(x).replace(/"/g,'""')}"`).join(','))
+  .join('\r\n');
 
   return new Response(csv, {
     headers: {
