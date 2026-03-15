@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProjectRole } from "@/lib/authz";
 
+type MemberItem = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+};
+
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ projectId: string }> },
@@ -19,20 +26,20 @@ export async function GET(
       orderBy: { joinedAt: "desc" },
     });
 
-    const items = rows
-      .map((r: (typeof rows)[number]) => ({
-        id: r.user.id,
-        name: r.user.name,
-        email: r.user.email!,
-        role: r.role,
-      }))
-      .filter((m: { name: string | null; email: string }) => {
-        if (!q) return true;
-        return (
-          (m.name ?? "").toLowerCase().includes(q) ||
-          m.email.toLowerCase().includes(q)
-        );
-      });
+    const mapped: MemberItem[] = rows.map((r) => ({
+      id: r.user.id,
+      name: r.user.name,
+      email: r.user.email!,
+      role: r.role,
+    }));
+
+    const items = mapped.filter((m) => {
+      if (!q) return true;
+      return (
+        (m.name ?? "").toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q)
+      );
+    });
 
     return NextResponse.json({ items });
   } catch (e: any) {
