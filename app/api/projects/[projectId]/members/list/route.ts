@@ -26,7 +26,7 @@ export async function GET(
         email: r.user.email!,
         role: r.role,
       }))
-      .filter((m) => {
+      .filter((m: { name: string | null; email: string }) => {
         if (!q) return true;
         return (
           (m.name ?? "").toLowerCase().includes(q) ||
