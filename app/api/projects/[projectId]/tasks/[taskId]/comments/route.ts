@@ -182,21 +182,21 @@ export async function POST(
 
       // Send notifications
       await tx.notification.createMany({
-        data: uniq.map((uid) => ({
-          recipientId: uid,
-          type: $Enums.NotificationType.MENTION, // General MENTION type
-          projectId,
-          taskId,
-          data: {
-            projectId,
-            taskId,
-            commentId: c.id,
-            actorName: me.name || me.email,
-            taskTitle: task?.title || "Công việc",
-            projectName: "Dự án", // Should fetch project name if needed
-          } as Prisma.InputJsonValue,
-        })),
-      });
+  data: uniq.map((uid: string) => ({
+    recipientId: uid,
+    type: $Enums.NotificationType.MENTION,
+    projectId,
+    taskId,
+    data: {
+      projectId,
+      taskId,
+      commentId: c.id,
+      actorName: me.name || me.email,
+      taskTitle: task?.title || "Công việc",
+      projectName: "Dự án",
+    } as any,
+  })),
+});
     }
 
     return c;
