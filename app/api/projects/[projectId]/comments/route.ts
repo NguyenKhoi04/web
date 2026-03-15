@@ -27,6 +27,7 @@ export async function GET(
   await requireProjectRole(projectId, "VIEWER");
 
   const { searchParams } = new URL(req.url);
+
   const parsed = Query.parse({
     page: searchParams.get("page") ?? undefined,
     pageSize: searchParams.get("pageSize") ?? undefined,
@@ -79,20 +80,26 @@ export async function POST(
     attachments = [],
   } = Body.parse(await req.json());
 
-  // Validate parentId nếu là reply
+  /* -------- validate parent comment -------- */
+
   if (parentId) {
     const parent = await prisma.projectComment.findUnique({
       where: { id: parentId },
     });
 
     if (!parent || parent.projectId !== projectId) {
-      return NextResponse.json({ error: "Invalid parentId" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid parentId" },
+        { status: 400 },
+      );
     }
   }
 
   const created = await prisma.$transaction(
     async (tx: Prisma.TransactionClient) => {
-      // Create comment
+
+      /* -------- create comment -------- */
+
       const c = await tx.projectComment.create({
         data: {
           projectId,
@@ -104,18 +111,20 @@ export async function POST(
       });
 
       /* ----------------------- Mentions (@user) ----------------------- */
-      const uniq = Array.from(
-        new Set(mentions.filter((u: string) => u !== me.id)),
+
+      const uniq: string[] = Array.from(
+        new Set(mentions.filter((u) => u !== me.id)),
       );
 
       if (uniq.length) {
+
         const project = await tx.project.findUnique({
           where: { id: projectId },
           select: { name: true },
         });
 
         await tx.commentMention.createMany({
-          data: uniq.map((uid: string) => ({
+          data: uniq.map((uid) => ({
             projectCommentId: c.id,
             userId: uid,
           })),
@@ -123,7 +132,7 @@ export async function POST(
         });
 
         await tx.notification.createMany({
-          data: uniq.map((uid: string) => ({
+          data: uniq.map((uid) => ({
             recipientId: uid,
             type: $Enums.NotificationType.PROJECT_COMMENT_MENTION,
             data: {
@@ -137,27 +146,30 @@ export async function POST(
       }
 
       /* -------------------- Notify reply participants -------------------- */
+
       if (parentId) {
+
         const others = await tx.projectComment.findMany({
           where: { parentId },
           select: { authorId: true },
           distinct: ["authorId"],
         });
 
-        const recipients = Array.from(
+        const recipients: string[] = Array.from(
           new Set(
             others
-              .map((o: (typeof others)[number]) => o.authorId)
+              .map((o) => o.authorId)
               .filter(
-                (id: string | null | undefined): id is string =>
+                (id): id is string =>
                   typeof id === "string" && id !== me.id,
               ),
           ),
         );
 
         if (recipients.length) {
+
           await tx.notification.createMany({
-            data: recipients.map((uid: string) => ({
+            data: recipients.map((uid) => ({
               recipientId: uid,
               type: $Enums.NotificationType.PROJECT_COMMENT_REPLY,
               data: {
@@ -166,6 +178,7 @@ export async function POST(
               } as any,
             })),
           });
+
         }
       }
 
