@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const users = await prisma.user.findMany({ select: { id: true } });
   if (users.length) {
     await prisma.notification.createMany({
-      data: users.map(u => ({
+      data: users.map((u: (typeof users)[number]) => ({
         recipientId: u.id,
         type: 'SYSTEM_BROADCAST',
         data: { title, message, severity: severity ?? 'info' },
