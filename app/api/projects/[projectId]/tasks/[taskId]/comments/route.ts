@@ -19,8 +19,11 @@ const Body = z.object({
 type Ctx = { params: { projectId: string; taskId: string } };
 
 /* --------------------------- GET: list comments --------------------------- */
-export async function GET(req: Request, ctx: Ctx) {
-  const { projectId, taskId } = ctx.params;
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ projectId: string; taskId: string }> }
+) {
+  const { projectId, taskId } = await params;
 
   // Use requireUser to identify current user
   const me = await requireUser();
