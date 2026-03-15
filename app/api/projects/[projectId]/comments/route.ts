@@ -4,8 +4,6 @@ import { prisma, Prisma, $Enums } from "@/lib/prisma";
 import { requireProjectRole, requireUser } from "@/lib/authz";
 import { z } from "zod";
 
-
-
 const Query = z.object({
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(20),
@@ -22,7 +20,7 @@ const Body = z.object({
 /* --------------------------- GET: list comments --------------------------- */
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
 
@@ -39,6 +37,7 @@ export async function GET(
     projectId,
     parentId: parsed.parentId ?? null,
   };
+
   const skip = (parsed.page - 1) * parsed.pageSize;
 
   const [items, total] = await Promise.all([
@@ -66,27 +65,33 @@ export async function GET(
 /* -------------------------- POST: create comment -------------------------- */
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
 
-  const me = await requireUser();                  // ✅ lấy user hiện tại
-  await requireProjectRole(projectId, "MEMBER");   // ✅ check quyền
+  const me = await requireUser();
+  await requireProjectRole(projectId, "MEMBER");
 
-  const { content, parentId, mentions = [], attachments = [] } = Body.parse(await req.json());
+  const {
+    content,
+    parentId,
+    mentions = [],
+    attachments = [],
+  } = Body.parse(await req.json());
 
-  // validate parentId nếu là reply
+  // Validate parentId nếu là reply
   if (parentId) {
     const parent = await prisma.projectComment.findUnique({
       where: { id: parentId },
     });
+
     if (!parent || parent.projectId !== projectId) {
       return NextResponse.json({ error: "Invalid parentId" }, { status: 400 });
     }
   }
 
-  const created = await prisma.$transaction(async (tx: any) => {
-    // tạo comment
+  const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Create comment
     const c = await tx.projectComment.create({
       data: {
         projectId,
@@ -97,18 +102,19 @@ export async function POST(
       },
     });
 
-    // Mentions (@user)
-    const uniq = Array.from(new Set(mentions.filter((u) => u !== me.id)));
+    /* ----------------------- Mentions (@user) ----------------------- */
+    const uniq = Array.from(
+      new Set(mentions.filter((u: string) => u !== me.id))
+    );
 
     if (uniq.length) {
-      // Get project name for notification
       const project = await tx.project.findUnique({
         where: { id: projectId },
         select: { name: true },
       });
 
       await tx.commentMention.createMany({
-        data: uniq.map((uid) => ({
+        data: uniq.map((uid: string) => ({
           projectCommentId: c.id,
           userId: uid,
         })),
@@ -116,7 +122,7 @@ export async function POST(
       });
 
       await tx.notification.createMany({
-        data: uniq.map((uid) => ({
+        data: uniq.map((uid: string) => ({
           recipientId: uid,
           type: $Enums.NotificationType.PROJECT_COMMENT_MENTION,
           data: {
@@ -129,7 +135,7 @@ export async function POST(
       });
     }
 
-    // Notify những người đã tham gia thread (reply)
+    /* -------------------- Notify reply participants -------------------- */
     if (parentId) {
       const others = await tx.projectComment.findMany({
         where: { parentId },
@@ -140,14 +146,14 @@ export async function POST(
       const recipients = Array.from(
         new Set(
           others
-            .map((o) => o.authorId)
+            .map((o: (typeof others)[number]) => o.authorId)
             .filter((id): id is string => !!id && id !== me.id)
         )
       );
 
       if (recipients.length) {
         await tx.notification.createMany({
-          data: recipients.map((uid) => ({
+          data: recipients.map((uid: string) => ({
             recipientId: uid,
             type: $Enums.NotificationType.PROJECT_COMMENT_REPLY,
             data: {
