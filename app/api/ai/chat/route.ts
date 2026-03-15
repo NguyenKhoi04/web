@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   // 1. Get User Context
   const session = await getServerSession(authOptions);
   let userContext = "User: Anonymous (Not logged in)";
-  let projectContext = null;
+  let projectContext: string | null = null;
 
   if (session?.user) {
     userContext = `User: ${session.user.name} (${session.user.email})\nGlobal Role: ${session.user.globalRole}`;

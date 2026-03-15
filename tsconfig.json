@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+     "noImplicitAny": false,
     "baseUrl": ".",
     "outDir": ".next/types",
     "ignoreDeprecations": "6.0",
